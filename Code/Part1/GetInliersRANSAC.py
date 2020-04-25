@@ -43,7 +43,7 @@ def get_inliers_ransac(path, file_name):
     max_inliers = 0
 
     for i in range(1000):
-        print("iteration number: ",i)
+        # print("iteration number: ",i)
 
         # condition to check if we get 80% of the inliers.
         if max_inliers >=0.80*np.shape(pts_from_txt)[0]:

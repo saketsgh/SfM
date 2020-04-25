@@ -1,9 +1,11 @@
-from GetInliersRANSAC import get_inliers_ransac
 import random
 import os
 import cv2
 import numpy as np
-
+from GetInliersRANSAC import get_inliers_ransac
+from EssentialMatrixFromFundamentalMatrix import estimate_e_matrix
+from ExtractCameraPose import extract_camera_pose
+from DisambiguateCameraPose import disambiguate_camera_pose
 
 
 def plot_correspondences(imgA, imgB, inlier_locs, outlier_locs, matchesImg="matches12", save=False):
@@ -66,10 +68,17 @@ def main():
     # loading images
     images = load_images(path)
 
+    # defining image pairs
     file_names = ["matches12", "matches13", "matches14", "matches23", "matches24", "matches34", "matches35", "matches36", "matches45"
     , "matches46", "matches56"]
     image_nums = [[0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3], [2, 4], [2, 5], [3, 4], [3, 5], [4, 5]]
 
+    # given camera calibration matrix
+    K = np.array([[568.996140852, 0, 643.21055941],
+         [0, 568.988362396, 477.982801038],
+         [0, 0, 1]])
+
+    # for each image pairs compute F, E
     for file_name, image_num in zip(file_names, image_nums):
 
         # get inliers and fundamental matrix using RANSAC
@@ -78,6 +87,13 @@ def main():
         # plotting correspondences for inliers
         plot_correspondences(images[image_num[0]], images[image_num[1]], max_inliers_locs, min_outliers_locs, file_name)
 
+        # get essential matrix
+        E = estimate_e_matrix(F_max_inliers, K)
+        C_list, R_list = extract_camera_pose(E)
+
+        R, C = disambiguate_camera_pose(C_list, R_list, K, max_inliers_locs)
+
+        break
 
 
 
