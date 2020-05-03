@@ -10,7 +10,7 @@ from NonlinearTriangulation import nonlinear_triang
 import matplotlib.pyplot as plt
 
 
-def linear_vs_non_linear(X_linear, X_non_linear):
+def linear_vs_non_linear(X_linear, X_non_linear, index):
 
     # extract the x and the z components
     # print(X_non_linear.shape)
@@ -27,8 +27,11 @@ def linear_vs_non_linear(X_linear, X_non_linear):
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
-    ax.scatter(x_l, z_l, s=3, color = 'r')
-    ax.scatter(x_nl, z_nl, s=3, color = 'b')
+    # define color scheme using index to identify which pose from the previous plot was correct
+    colormap = np.array(['y', 'b', 'c', 'r'])
+
+    ax.scatter(x_l, z_l, s=4, color = colormap[index])
+    ax.scatter(x_nl, z_nl, s=4, color = 'm')
     plt.xlim(-15, 15)
     plt.ylim(-10, 30)
     plt.show()
@@ -122,14 +125,14 @@ def main():
 
 
         # disambiguate camera pose and get the best pose of cam right
-        R2, C2, X_list = disambiguate_camera_pose(C_list, R_list, K, max_inliers_locs)
+        R2, C2, X_list, index = disambiguate_camera_pose(C_list, R_list, K, max_inliers_locs)
 
         # perform non-linear triangulation to get refined X
         X_list_refined =  nonlinear_triang(R2, C2, X_list, max_inliers_locs, K)
 
 
         # compare non-linear triangulation with linear by plot
-        linear_vs_non_linear(X_list, X_list_refined)
+        linear_vs_non_linear(X_list, X_list_refined, index)
 
         i+=1
         break

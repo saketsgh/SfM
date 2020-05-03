@@ -42,7 +42,7 @@ def get_inliers_ransac(path, file_name):
     ## RANSAC
     max_inliers = 0
 
-    for i in range(5000):
+    for i in range(1000):
         # print("iteration number: ",i)
 
         # condition to check if we get 80% of the inliers.
@@ -60,8 +60,8 @@ def get_inliers_ransac(path, file_name):
 
         # setting threshold
         # print(vals)
-        inliers_index = np.where(vals<0.1)
-        outliers_index = np.where(vals>=0.1)
+        inliers_index = np.where(vals<0.4)
+        outliers_index = np.where(vals>=0.4)
 
         # checking for max_inliersand saving it's index
         if np.shape(inliers_index[0])[0] > max_inliers:
@@ -70,9 +70,8 @@ def get_inliers_ransac(path, file_name):
             min_outliers_index = outliers_index
             F_max_inliers = F
 
-    min_outliers = np.shape(min_outliers_index[0])[0]
+    # min_outliers = np.shape(min_outliers_index[0])[0]
     # print(np.shape(pts_from_txt)[0])
     print("max inliers - {}".format(max_inliers))
-    # print(min_outliers)
 
     return pts_from_txt[max_inliers_index], pts_from_txt[min_outliers_index], F_max_inliers
