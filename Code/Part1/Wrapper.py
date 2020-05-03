@@ -6,6 +6,32 @@ from GetInliersRANSAC import get_inliers_ransac
 from EssentialMatrixFromFundamentalMatrix import estimate_e_matrix
 from ExtractCameraPose import extract_camera_pose
 from DisambiguateCameraPose import disambiguate_camera_pose
+from NonlinearTriangulation import nonlinear_triang
+import matplotlib.pyplot as plt
+
+
+def linear_vs_non_linear(X_linear, X_non_linear):
+
+    # extract the x and the z components
+    # print(X_non_linear.shape)
+    # X_non_linear = X_non_linear.reshape((X_non_linear.shape[0], -1))
+    X_linear = np.array(X_linear)
+    X_linear = X_linear.reshape((X_linear.shape[0], -1))
+
+    x_l = X_linear[:, 0]
+    z_l = X_linear[:, 2]
+    x_nl = X_non_linear[:, 0]
+    z_nl = X_non_linear[:, 2]
+
+    # plot linear and non linear points and compare
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+
+    ax.scatter(x_l, z_l, s=3, color = 'r')
+    ax.scatter(x_nl, z_nl, s=3, color = 'b')
+    plt.xlim(-15, 15)
+    plt.ylim(-10, 30)
+    plt.show()
 
 
 def plot_correspondences(imgA, imgB, inlier_locs, outlier_locs, matchesImg="matches12", save=False):
@@ -79,8 +105,11 @@ def main():
          [0, 0, 1]])
 
     # for each image pairs compute F, E
+    i = 0
     for file_name, image_num in zip(file_names, image_nums):
 
+        if(i>0):
+            break
         # get inliers and fundamental matrix using RANSAC
         max_inliers_locs, min_outliers_locs, F_max_inliers = get_inliers_ransac(path, file_name)
 
@@ -91,8 +120,18 @@ def main():
         E = estimate_e_matrix(F_max_inliers, K)
         C_list, R_list = extract_camera_pose(E)
 
-        R, C = disambiguate_camera_pose(C_list, R_list, K, max_inliers_locs)
 
+        # disambiguate camera pose and get the best pose of cam right
+        R2, C2, X_list = disambiguate_camera_pose(C_list, R_list, K, max_inliers_locs)
+
+        # perform non-linear triangulation to get refined X
+        X_list_refined =  nonlinear_triang(R2, C2, X_list, max_inliers_locs, K)
+
+
+        # compare non-linear triangulation with linear by plot
+        linear_vs_non_linear(X_list, X_list_refined)
+
+        i+=1
         break
 
 

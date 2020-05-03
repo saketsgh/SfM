@@ -21,17 +21,17 @@ def linear_triagulation(C, R, K, inliers):
     M1 = np.dot(K, M1)
 
     # extract image points
+
     pts_1 = inliers[:, 0:2]
     pts_2 = inliers[:, 2:4]
-
     # make homog
     ones = np.ones((pts_1.shape[0], 1))
     pts_1 = np.hstack((pts_1, ones))
     pts_2 = np.hstack((pts_2, ones))
 
-
-    M2 = np.hstack((R, -C))
-    M2 = np.dot(K, M2)
+    I = np.identity(3)
+    M2 = np.hstack((I, -C))
+    M2 = np.dot(K, np.dot(R, M2))
 
     X_list = []
 
@@ -44,11 +44,15 @@ def linear_triagulation(C, R, K, inliers):
         A = np.vstack((a1, a2))
 
         u, s, vt = np.linalg.svd(A)
-        X = vt[:, -1]
+
+        # last column of v is the solution
+        v = vt.T
+        X = v[:, -1]
 
         # non-homg
         X = X/X[3]
         X = X[:3]
+
         X = np.array(X)
         X = X.reshape((3, 1))
 

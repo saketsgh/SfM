@@ -42,7 +42,7 @@ def get_inliers_ransac(path, file_name):
     ## RANSAC
     max_inliers = 0
 
-    for i in range(1000):
+    for i in range(5000):
         # print("iteration number: ",i)
 
         # condition to check if we get 80% of the inliers.
@@ -59,6 +59,7 @@ def get_inliers_ransac(path, file_name):
         vals = np.abs(np.diag(np.dot(np.dot(pts_img2, F), pts_img1.T)))
 
         # setting threshold
+        # print(vals)
         inliers_index = np.where(vals<0.1)
         outliers_index = np.where(vals>=0.1)
 

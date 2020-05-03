@@ -12,13 +12,16 @@ def estimate_f_matrix(points8):
 
         # form the A matrix
         A.append([x1*x2, x1*y2, x1, y1*x2, y1*y2, y1, x2, y2, 1])
+        # A.append([x2*x1, x2*y1, x2, y2*x1, y2*y1, y2, x1, y1, 1])
 
     A = np.array(A)
 
     # Least sqauares solution of AX = 0
     u, s, vt = np.linalg.svd(A)
 
-    x = vt[-1]
+    # last column of v is the solution
+    v = vt.T
+    x = v[:, -1]
 
     F = np.reshape(x, (3, 3))
 

@@ -2,8 +2,8 @@ import numpy as np
 
 
 
-def check_determinant(C,R):
-    if np.linalg.det(R) < 0:
+def check_determinant(C, R):
+    if np.linalg.det(R) == -1:
         return -C, -R
 
     else:
@@ -27,10 +27,10 @@ def extract_camera_pose(E):
     C4 = -U[:, 2]
     R4 = (np.dot(U, np.dot(W.T, Vt)))
 
-    C1,R1 = check_determinant(C1,R1)
-    C2,R2 = check_determinant(C2,R2)
-    C3,R3 = check_determinant(C3,R3)
-    C4,R4 = check_determinant(C4,R4)
+    C1, R1 = check_determinant(C1, R1)
+    C2, R2 = check_determinant(C2, R2)
+    C3, R3 = check_determinant(C3, R3)
+    C4, R4 = check_determinant(C4, R4)
 
 
     C = np.array([C1, C2, C3, C4])
