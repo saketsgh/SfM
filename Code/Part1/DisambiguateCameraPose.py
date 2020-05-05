@@ -48,6 +48,7 @@ def plot_points(X_list, i, C, R):
     # ax.plot(-C[0], -C[2], marker=(3, 0, int(angles_camera[1])), markersize=15, color=colormap[i])
     ax.scatter((-C[0]), (-C[2]), marker=t, s=250, color=colormap[i])
     ax.scatter(x, z, s=4, color=colormap[i])
+    # ax.scatter(-x, -z, s=4, color=colormap[i])
 
 
 # Checks if a matrix is a valid rotation matrix.

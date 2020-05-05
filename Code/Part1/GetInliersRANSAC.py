@@ -60,8 +60,8 @@ def get_inliers_ransac(path, file_name):
 
         # setting threshold
         # print(vals)
-        inliers_index = np.where(vals<0.4)
-        outliers_index = np.where(vals>=0.4)
+        inliers_index = np.where(vals<0.2)
+        outliers_index = np.where(vals>=0.2)
 
         # checking for max_inliersand saving it's index
         if np.shape(inliers_index[0])[0] > max_inliers:
@@ -70,8 +70,8 @@ def get_inliers_ransac(path, file_name):
             min_outliers_index = outliers_index
             F_max_inliers = F
 
+    F_max_inliers = estimate_f_matrix(pts_from_txt[max_inliers_index])
     # min_outliers = np.shape(min_outliers_index[0])[0]
-    # print(np.shape(pts_from_txt)[0])
     print("max inliers - {}".format(max_inliers))
 
     return pts_from_txt[max_inliers_index], pts_from_txt[min_outliers_index], F_max_inliers

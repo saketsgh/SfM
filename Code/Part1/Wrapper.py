@@ -31,7 +31,7 @@ def linear_vs_non_linear(X_linear, X_non_linear, index):
     colormap = np.array(['y', 'b', 'c', 'r'])
 
     ax.scatter(x_l, z_l, s=4, color = colormap[index])
-    ax.scatter(x_nl, z_nl, s=4, color = 'm')
+    ax.scatter(x_nl, z_nl, s=4, color = 'k')
     plt.xlim(-15, 15)
     plt.ylim(-10, 30)
     plt.show()

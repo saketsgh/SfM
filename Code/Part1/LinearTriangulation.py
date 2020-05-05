@@ -21,9 +21,9 @@ def linear_triagulation(C, R, K, inliers):
     M1 = np.dot(K, M1)
 
     # extract image points
-
     pts_1 = inliers[:, 0:2]
     pts_2 = inliers[:, 2:4]
+
     # make homog
     ones = np.ones((pts_1.shape[0], 1))
     pts_1 = np.hstack((pts_1, ones))
@@ -36,6 +36,7 @@ def linear_triagulation(C, R, K, inliers):
     X_list = []
 
     for p1, p2 in zip(pts_1, pts_2):
+
         p1_chi = anti_sym_mat(p1)
         p2_chi = anti_sym_mat(p2)
 
