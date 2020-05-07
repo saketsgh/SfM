@@ -13,15 +13,17 @@ import matplotlib.pyplot as plt
 def linear_vs_non_linear(X_linear, X_non_linear, index):
 
     # extract the x and the z components
-    # print(X_non_linear.shape)
-    # X_non_linear = X_non_linear.reshape((X_non_linear.shape[0], -1))
+
     X_linear = np.array(X_linear)
     X_linear = X_linear.reshape((X_linear.shape[0], -1))
 
     x_l = X_linear[:, 0]
     z_l = X_linear[:, 2]
-    x_nl = X_non_linear[:, 0]
-    z_nl = X_non_linear[:, 2]
+
+    x_indices = range(0, np.shape(X_non_linear)[0], 3)
+    z_indices = range(2, np.shape(X_non_linear)[0], 3)
+    x_nl = X_non_linear[x_indices]
+    z_nl = X_non_linear[z_indices]
 
     # plot linear and non linear points and compare
     fig = plt.figure()
@@ -30,10 +32,10 @@ def linear_vs_non_linear(X_linear, X_non_linear, index):
     # define color scheme using index to identify which pose from the previous plot was correct
     colormap = np.array(['y', 'b', 'c', 'r'])
 
-    ax.scatter(x_l, z_l, s=4, color = colormap[index])
-    ax.scatter(x_nl, z_nl, s=4, color = 'k')
-    plt.xlim(-15, 15)
-    plt.ylim(-10, 30)
+    ax.scatter(x_l, z_l, s=40, marker='+', color = colormap[index])
+    ax.scatter(x_nl, z_nl, s=7, color = 'k')
+    plt.xlim(-15, 20)
+    plt.ylim(-30, 40)
     plt.show()
 
 
@@ -58,7 +60,7 @@ def plot_correspondences(imgA, imgB, inlier_locs, outlier_locs, matchesImg="matc
         cv2.circle(clubimage, (x2+shiftX, y2), 3, (255, 0, 0), 1)
         cv2.line(clubimage, (x1, y1), (x2+shiftX, y2), (0, 255, 0), 1)
 
-    # printing outliers
+    # # printing outliers
     for _, p in enumerate(outlier_locs):
 
         x1, y1 = p[0], p[1]
@@ -89,6 +91,69 @@ def load_images(path):
 
 
 
+def draw_epipolar_lines(F, img_left, img_right, pts_left, pts_right):
+    """
+    Draw the epipolar lines given the fundamental matrix, left right images
+    and left right datapoints
+    You do not need to modify anything in this function, although you can if
+    you want to.
+    :param F: 3 x 3; fundamental matrix
+    :param img_left:
+    :param img_right:
+    :param pts_left: N x 2
+    :param pts_right: N x 2
+    :return:
+    """
+    # lines in the RIGHT image
+    # corner points
+    p_ul = np.asarray([0, 0, 1])
+    p_ur = np.asarray([img_right.shape[1], 0, 1])
+    p_bl = np.asarray([0, img_right.shape[0], 1])
+    p_br = np.asarray([img_right.shape[1], img_right.shape[0], 1])
+
+    # left and right border lines
+    l_l = np.cross(p_ul, p_bl)
+    l_r = np.cross(p_ur, p_br)
+
+    fig, ax = plt.subplots()
+    ax.imshow(img_right)
+    ax.autoscale(False)
+    ax.scatter(pts_right[:, 0], pts_right[:, 1], marker='o', s=20, c='yellow',
+        edgecolors='red')
+    for p in pts_left:
+        p = np.hstack((p, 1))[:, np.newaxis]
+        l_e = np.dot(F, p).squeeze()  # epipolar line
+        p_l = np.cross(l_e, l_l)
+        p_r = np.cross(l_e, l_r)
+        x = [p_l[0]/p_l[2], p_r[0]/p_r[2]]
+        y = [p_l[1]/p_l[2], p_r[1]/p_r[2]]
+        ax.plot(x, y, linewidth=1, c='blue')
+
+    # lines in the LEFT image
+    # corner points
+    p_ul = np.asarray([0, 0, 1])
+    p_ur = np.asarray([img_left.shape[1], 0, 1])
+    p_bl = np.asarray([0, img_left.shape[0], 1])
+    p_br = np.asarray([img_left.shape[1], img_left.shape[0], 1])
+
+    # left and right border lines
+    l_l = np.cross(p_ul, p_bl)
+    l_r = np.cross(p_ur, p_br)
+
+    fig, ax = plt.subplots()
+    ax.imshow(img_left)
+    ax.autoscale(False)
+    ax.scatter(pts_left[:, 0], pts_left[:, 1], marker='o', s=20, c='yellow',
+        edgecolors='red')
+    for p in pts_right:
+        p = np.hstack((p, 1))[:, np.newaxis]
+        l_e = np.dot(F.T, p).squeeze()  # epipolar line
+        p_l = np.cross(l_e, l_l)
+        p_r = np.cross(l_e, l_r)
+        x = [p_l[0]/p_l[2], p_r[0]/p_r[2]]
+        y = [p_l[1]/p_l[2], p_r[1]/p_r[2]]
+        ax.plot(x, y, linewidth=1, c='blue')
+    plt.show()
 
 def main():
 
@@ -114,10 +179,12 @@ def main():
         if(i>0):
             break
         # get inliers and fundamental matrix using RANSAC
-        max_inliers_locs, min_outliers_locs, F_max_inliers = get_inliers_ransac(path, file_name)
+        max_inliers_locs, min_outliers_locs, F_max_inliers, pts_left, pts_right = get_inliers_ransac(path, file_name)
 
         # plotting correspondences for inliers
         plot_correspondences(images[image_num[0]], images[image_num[1]], max_inliers_locs, min_outliers_locs, file_name)
+
+        draw_epipolar_lines(F_max_inliers, images[image_num[0]], images[image_num[1]], pts_left[:100], pts_right[:100])
 
         # get essential matrix
         E = estimate_e_matrix(F_max_inliers, K)

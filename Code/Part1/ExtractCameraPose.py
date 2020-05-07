@@ -3,7 +3,7 @@ import numpy as np
 
 
 def check_determinant(C, R):
-    if np.linalg.det(R) == -1:
+    if np.linalg.det(R) < 0:
         return -C, -R
 
     else:

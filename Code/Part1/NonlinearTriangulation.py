@@ -25,18 +25,23 @@ def compute_reproj_err(pt_img1, M1, pt_img2, M2, X):
     reproj_err += ((pt_img1[0] - pt_img1_proj[0])**2) + ((pt_img1[1] - pt_img1_proj[1])**2)
     # for cam 2
     reproj_err += ((pt_img2[0] - pt_img2_proj[0])**2) + ((pt_img2[1] - pt_img2_proj[1])**2)
-    reproj_err = reproj_err[0]
+
 
     return reproj_err
 
 
-def optimize_params(x0, pt_img1, M1, pt_img2, M2):
+def optimize_params(x0, pts_img1, M1, pts_img2, M2, X_list):
 
-    #x0 is the 3D point that we want to refine
+    # x0 is the 3D point that we want to refine
     # calculate reprojection error
-    reproj_err = compute_reproj_err(pt_img1, M1, pt_img2, M2, x0)
-
-    return reproj_err
+    reproj_err_all = []
+    for pt_img1, pt_img2, X in zip(pts_img1, pts_img2, X_list):
+        reproj_err = compute_reproj_err(pt_img1, M1, pt_img2, M2, X)
+        reproj_err_all.append(reproj_err)
+    reproj_err_all = np.array(reproj_err_all)
+    reproj_err_all = reproj_err_all.reshape(reproj_err_all.shape[0],)
+    # print(np.mean(reproj_err_all))
+    return reproj_err_all
 
 
 def nonlinear_triang(R2, C2, X_list, inliers, K):
@@ -55,13 +60,15 @@ def nonlinear_triang(R2, C2, X_list, inliers, K):
     M2 = np.dot(K, np.dot(R2, M2))
 
     X_list_ref = []
-    for pt_img1, pt_img2, X in zip(pts_img1, pts_img2, X_list):
-        X = X.reshape(X.shape[0],)
-        result = optimize.least_squares(fun=optimize_params, x0=X, args=[pt_img1, M1, pt_img2, M2])
-        X_ref = result.x
-        X_ref = X_ref.reshape((3,))
-        X_list_ref.append(X_ref)
 
-    X_list_ref = np.array(X_list_ref)
+    # for pt_img1, pt_img2, X in zip(pts_img1, pts_img2, X_list):
+        # X = X.reshape(X.shape[0],)
+    result = optimize.least_squares(fun=optimize_params,x0=X_list.flatten(), method="dogbox", args=[pts_img1, M1, pts_img2, M2, X_list],ftol=1e-10)
+        # X_ref = result.x
+        # X_ref = X_ref.reshape((3,))
+    # X_list_ref.append(X_ref)
 
-    return X_list_ref
+    # X_list_ref = np.array(X_list_ref)
+
+
+    return result.x

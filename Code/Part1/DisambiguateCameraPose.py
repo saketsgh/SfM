@@ -25,7 +25,7 @@ def plot_points(X_list, i, C, R):
     X_list = np.array(X_list)
 
     # reshape
-    X_list = X_list.reshape((X_list.shape[0], -1))
+    X_list = X_list.reshape((X_list.shape[0], 3))
 
     # extract x and z
     x = X_list[:, 0]
@@ -114,7 +114,7 @@ def disambiguate_camera_pose(C_list, R_list, K, inliers):
             index = i
 
         i+=1
-    plt.xlim(-15, 15)
-    plt.ylim(-20, 20)
+    plt.xlim(-15, 20)
+    plt.ylim(-30, 40)
     plt.show()
     return R_best, C_best, X_list_best, index

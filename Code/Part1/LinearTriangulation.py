@@ -37,15 +37,16 @@ def linear_triagulation(C, R, K, inliers):
 
     for p1, p2 in zip(pts_1, pts_2):
 
-        p1_chi = anti_sym_mat(p1)
-        p2_chi = anti_sym_mat(p2)
-
-        a1 = np.dot(p1_chi, M1)
-        a2 = np.dot(p2_chi, M2)
-        A = np.vstack((a1, a2))
-
-        u, s, vt = np.linalg.svd(A)
-
+        # p1_chi = anti_sym_mat(p1)
+        # p2_chi = anti_sym_mat(p2)
+        #
+        # a1 = np.dot(p1_chi, M1)
+        # a2 = np.dot(p2_chi, M2)
+        # A = np.vstack((a1, a2))
+        A = np.array([[p1[0]*M1[2].T - M1[0].T], [p1[1]*M1[2].T - M1[1].T], [p2[0]*M2[2].T - M2[0].T], [p2[1]*M2[2].T - M2[1].T]])
+        A = A.reshape((4, 4))
+        u, s, vt = np.linalg.svd(np.dot(A.T, A))
+        # u, s, vt = np.linalg.svd(A)
         # last column of v is the solution
         v = vt.T
         X = v[:, -1]
@@ -58,5 +59,5 @@ def linear_triagulation(C, R, K, inliers):
         X = X.reshape((3, 1))
 
         X_list.append(X)
-
+    X_list = np.array(X_list)
     return X_list
