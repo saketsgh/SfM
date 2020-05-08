@@ -11,14 +11,7 @@ def anti_sym_mat(p):
 
 
 
-def linear_triagulation(C, R, K, inliers):
-
-    # first camera pose
-    M1 = np.identity(4)
-    # make 3X4
-    M1 = M1[0:3, :]
-    # dot product with K to turn it into projection matrix of first camera
-    M1 = np.dot(K, M1)
+def linear_triagulation(M1, C2, R2, K, inliers):
 
     # extract image points
     pts_1 = inliers[:, 0:2]
@@ -29,9 +22,10 @@ def linear_triagulation(C, R, K, inliers):
     pts_1 = np.hstack((pts_1, ones))
     pts_2 = np.hstack((pts_2, ones))
 
+    # construct projection matrix of camera 2
     I = np.identity(3)
-    M2 = np.hstack((I, -C))
-    M2 = np.dot(K, np.dot(R, M2))
+    M2 = np.hstack((I, -C2))
+    M2 = np.dot(K, np.dot(R2, M2))
 
     X_list = []
 
@@ -45,8 +39,8 @@ def linear_triagulation(C, R, K, inliers):
         # A = np.vstack((a1, a2))
         A = np.array([[p1[0]*M1[2].T - M1[0].T], [p1[1]*M1[2].T - M1[1].T], [p2[0]*M2[2].T - M2[0].T], [p2[1]*M2[2].T - M2[1].T]])
         A = A.reshape((4, 4))
-        u, s, vt = np.linalg.svd(np.dot(A.T, A))
-        # u, s, vt = np.linalg.svd(A)
+        # u, s, vt = np.linalg.svd(np.dot(A.T, A))
+        u, s, vt = np.linalg.svd(A)
         # last column of v is the solution
         v = vt.T
         X = v[:, -1]

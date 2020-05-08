@@ -3,10 +3,12 @@ import os
 import cv2
 import numpy as np
 from GetInliersRANSAC import get_inliers_ransac
+from GetInliersRANSAC import get_pts_from_txt
 from EssentialMatrixFromFundamentalMatrix import estimate_e_matrix
 from ExtractCameraPose import extract_camera_pose
 from DisambiguateCameraPose import disambiguate_camera_pose
 from NonlinearTriangulation import nonlinear_triang
+from LinearPnP import linear_pnp
 import matplotlib.pyplot as plt
 
 
@@ -91,125 +93,106 @@ def load_images(path):
 
 
 
-def draw_epipolar_lines(F, img_left, img_right, pts_left, pts_right):
-    """
-    Draw the epipolar lines given the fundamental matrix, left right images
-    and left right datapoints
-    You do not need to modify anything in this function, although you can if
-    you want to.
-    :param F: 3 x 3; fundamental matrix
-    :param img_left:
-    :param img_right:
-    :param pts_left: N x 2
-    :param pts_right: N x 2
-    :return:
-    """
-    # lines in the RIGHT image
-    # corner points
-    p_ul = np.asarray([0, 0, 1])
-    p_ur = np.asarray([img_right.shape[1], 0, 1])
-    p_bl = np.asarray([0, img_right.shape[0], 1])
-    p_br = np.asarray([img_right.shape[1], img_right.shape[0], 1])
+def get_2d_corresp(ref_img_2d_3d, matches):
 
-    # left and right border lines
-    l_l = np.cross(p_ul, p_bl)
-    l_r = np.cross(p_ur, p_br)
+    new_img_2d_3d = []
+    for pts in matches:
+        matches_ref_img = pts[0:2]
+        matches_new_img = pts[2:4]
 
-    fig, ax = plt.subplots()
-    ax.imshow(img_right)
-    ax.autoscale(False)
-    ax.scatter(pts_right[:, 0], pts_right[:, 1], marker='o', s=20, c='yellow',
-        edgecolors='red')
-    for p in pts_left:
-        p = np.hstack((p, 1))[:, np.newaxis]
-        l_e = np.dot(F, p).squeeze()  # epipolar line
-        p_l = np.cross(l_e, l_l)
-        p_r = np.cross(l_e, l_r)
-        x = [p_l[0]/p_l[2], p_r[0]/p_r[2]]
-        y = [p_l[1]/p_l[2], p_r[1]/p_r[2]]
-        ax.plot(x, y, linewidth=1, c='blue')
+        # compare with all other points in ref image to get
+        ref_2d = ref_img_2d_3d[:, 0:2]
+        ssd = ref_2d - matches_ref_img
+        ssd = ssd**2
+        ssd = np.sum(ssd, axis=1)
+        locs = np.where(ssd == 0)[0]
+        if(np.shape(locs)[0]):
+            # we got the same point from inliers calculated in previous steps and from the matches
+            new_img_2d_3d.append([matches_new_img[0], matches_new_img[1],
+            ref_img_2d_3d[locs][0][2], ref_img_2d_3d[locs][0][3], ref_img_2d_3d[locs][0][4]])
 
-    # lines in the LEFT image
-    # corner points
-    p_ul = np.asarray([0, 0, 1])
-    p_ur = np.asarray([img_left.shape[1], 0, 1])
-    p_bl = np.asarray([0, img_left.shape[0], 1])
-    p_br = np.asarray([img_left.shape[1], img_left.shape[0], 1])
+    return np.array(new_img_2d_3d)
 
-    # left and right border lines
-    l_l = np.cross(p_ul, p_bl)
-    l_r = np.cross(p_ur, p_br)
-
-    fig, ax = plt.subplots()
-    ax.imshow(img_left)
-    ax.autoscale(False)
-    ax.scatter(pts_left[:, 0], pts_left[:, 1], marker='o', s=20, c='yellow',
-        edgecolors='red')
-    for p in pts_right:
-        p = np.hstack((p, 1))[:, np.newaxis]
-        l_e = np.dot(F.T, p).squeeze()  # epipolar line
-        p_l = np.cross(l_e, l_l)
-        p_r = np.cross(l_e, l_r)
-        x = [p_l[0]/p_l[2], p_r[0]/p_r[2]]
-        y = [p_l[1]/p_l[2], p_r[1]/p_r[2]]
-        ax.plot(x, y, linewidth=1, c='blue')
-    plt.show()
 
 def main():
 
+    # path to load the data from
     path='../../Data/Data/'
 
     # loading images
     images = load_images(path)
 
     # defining image pairs
-    file_names = ["matches12", "matches13", "matches14", "matches23", "matches24", "matches34", "matches35", "matches36", "matches45"
-    , "matches46", "matches56"]
+    file_names = ["matches12", "matches13",
+                "matches14", "matches23",
+                "matches24", "matches34",
+                "matches35", "matches36",
+                "matches45", "matches46", "matches56"]
+
     image_nums = [[0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3], [2, 4], [2, 5], [3, 4], [3, 5], [4, 5]]
 
     # given camera calibration matrix
-    K = np.array([[568.996140852, 0, 643.21055941],
-         [0, 568.988362396, 477.982801038],
-         [0, 0, 1]])
+    K = np.array([[568.996140852, 0, 643.21055941], [0, 568.988362396, 477.982801038], [0, 0, 1]])
+
+    # define camera 1 as the world pose
+    M1 = np.identity(4)
+    # # make 3X4
+    M1 = M1[0:3, :]
+    # # dot product with K to turn it into projection matrix of first camera
+    M1 = np.dot(K, M1)
+    # M1 = M1.astype(float32)
 
     # for each image pairs compute F, E
-    i = 0
-    for file_name, image_num in zip(file_names, image_nums):
+    # get inliers and fundamental matrix using RANSAC
+    file_name=file_names[0]
+    max_inliers_locs, min_outliers_locs, F_max_inliers, pts_left, pts_right = get_inliers_ransac(path, file_name)
 
-        if(i>0):
-            break
-        # get inliers and fundamental matrix using RANSAC
-        max_inliers_locs, min_outliers_locs, F_max_inliers, pts_left, pts_right = get_inliers_ransac(path, file_name)
+    # plotting correspondences for inliers
+    plot_correspondences(images[0], images[1], max_inliers_locs, min_outliers_locs, file_name)
 
-        # plotting correspondences for inliers
-        plot_correspondences(images[image_num[0]], images[image_num[1]], max_inliers_locs, min_outliers_locs, file_name)
-
-        draw_epipolar_lines(F_max_inliers, images[image_num[0]], images[image_num[1]], pts_left[:100], pts_right[:100])
-
-        # get essential matrix
-        E = estimate_e_matrix(F_max_inliers, K)
-        C_list, R_list = extract_camera_pose(E)
+    # get essential matrix
+    E = estimate_e_matrix(F_max_inliers, K)
+    C2_list, R2_list = extract_camera_pose(E)
 
 
-        # disambiguate camera pose and get the best pose of cam right
-        R2, C2, X_list, index = disambiguate_camera_pose(C_list, R_list, K, max_inliers_locs)
+    # disambiguate camera pose and get the best pose of cam right and 3D points
+    R2, C2, X_list, index = disambiguate_camera_pose(M1, C2_list, R2_list, K, max_inliers_locs)
 
-        # perform non-linear triangulation to get refined X
-        X_list_refined =  nonlinear_triang(R2, C2, X_list, max_inliers_locs, K)
+    # construct pose of camera 2
+    I = np.identity(3)
+    M2 = np.hstack((I, -C2))
+    M2 = np.dot(K, np.dot(R2, M2))
 
+    # perform non-linear triangulation to get refined 3D points
+    X_list_refined =  nonlinear_triang(M1, M2, X_list, max_inliers_locs, K)
 
-        # compare non-linear triangulation with linear by plot
-        linear_vs_non_linear(X_list, X_list_refined, index)
+    # compare non-linear triangulation with linear by plot
+    linear_vs_non_linear(X_list, X_list_refined, index)
 
-        i+=1
-        break
+    # use linear pnp to estimate pose of remaining cams(3, 4, 5, 6) using the matchings
+    # (1, 3), (1, 4), (3, 5) (3, 6)
 
+    # first we need to get inliers of image i(3-6) wrt previously estimated camera pose so that we
+    # match the 2D image point with the already calculated 3D point
+    pts_ref_img = max_inliers_locs[:, 0:2]
+    X_list_refined = np.reshape(X_list_refined, (pts_ref_img.shape[0], 3))
+    ref_img_2d_3d = np.hstack((pts_ref_img, X_list_refined))
+    print(np.shape(ref_img_2d_3d))
 
+    # next we must compare it with the points found using given matches
+    file_name = file_names[1]
+    matches = get_pts_from_txt(path, file_name+".txt")
+    matches = np.array(matches, np.float32)
 
+    new_img_2d_3d = get_2d_corresp(ref_img_2d_3d, matches)
+    print(np.shape(new_img_2d_3d))
 
+    # use the 2d-3d correspondences to find the pose of the new cam
+    R_new, C_new = linear_pnp(new_img_2d_3d, K)
+    pose_new = np.hstack((R_new, C_new))
+    # print(pose_new)
 
-
-
+    
 
 if __name__ == '__main__':
     main()

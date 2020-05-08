@@ -44,20 +44,11 @@ def optimize_params(x0, pts_img1, M1, pts_img2, M2, X_list):
     return reproj_err_all
 
 
-def nonlinear_triang(R2, C2, X_list, inliers, K):
+def nonlinear_triang(M1, M2, X_list, inliers, K):
 
     # extract image points
     pts_img1 = inliers[:, 0:2]
     pts_img2 = inliers[:, 2:4]
-
-    # construct the projection matrix of left(or image 1) and right(image 2) images
-    M1 = np.identity(4)
-    M1 = M1[0:3, :]
-    M1 = np.dot(K, M1)
-
-    I = np.identity(3)
-    M2 = np.hstack((I, -C2))
-    M2 = np.dot(K, np.dot(R2, M2))
 
     X_list_ref = []
 

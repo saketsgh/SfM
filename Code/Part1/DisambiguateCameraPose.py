@@ -83,7 +83,7 @@ def rotationMatrixToEulerAngles(R):
     return np.array([x, y, z])
 
 
-def disambiguate_camera_pose(C_list, R_list, K, inliers):
+def disambiguate_camera_pose(M1, C2_list, R2_list, K, inliers):
 
     # to keep track of the maximum X points
     max_count = 0
@@ -94,18 +94,18 @@ def disambiguate_camera_pose(C_list, R_list, K, inliers):
     ax = fig.add_subplot(111)
 
     # for each Rot and Translation
-    for R, C in zip(R_list, C_list):
+    for R, C in zip(R2_list, C2_list):
 
         C = C.reshape((3, 1))
 
         # list of 3D points for the inliers
-        X_list = linear_triagulation(C, R, K, inliers)
+        X_list = linear_triagulation(M1, C, R, K, inliers)
 
         # number of 3D points satisfying cheirality
         count = cheirality_check(C, R, X_list)
 
         plot_points(X_list, i, C, R)
-
+        print(count)
         if(count > max_count):
             max_count = count
             R_best = R
