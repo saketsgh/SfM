@@ -37,8 +37,12 @@ def linear_triagulation(M1, C2, R2, K, inliers):
         # a1 = np.dot(p1_chi, M1)
         # a2 = np.dot(p2_chi, M2)
         # A = np.vstack((a1, a2))
-        A = np.array([[p1[0]*M1[2].T - M1[0].T], [p1[1]*M1[2].T - M1[1].T], [p2[0]*M2[2].T - M2[0].T], [p2[1]*M2[2].T - M2[1].T]])
-        A = A.reshape((4, 4))
+        A = [p1[0]*M1[2, :] - M1[0, :]]
+        A.append(p1[1]*M1[2, :] - M1[1, :])
+        A.append(p2[0]*M2[2, :] - M2[0, :])
+        A.append(p2[1]*M2[2, :] - M2[1, :])
+
+        A = np.array(A)
         # u, s, vt = np.linalg.svd(np.dot(A.T, A))
         u, s, vt = np.linalg.svd(A)
         # last column of v is the solution

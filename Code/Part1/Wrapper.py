@@ -9,7 +9,10 @@ from ExtractCameraPose import extract_camera_pose
 from DisambiguateCameraPose import disambiguate_camera_pose
 from NonlinearTriangulation import nonlinear_triang
 from LinearPnP import linear_pnp
+import matplotlib as mpl
 import matplotlib.pyplot as plt
+
+from Misc.utils import*
 
 
 def linear_vs_non_linear(X_linear, X_non_linear, index):
@@ -114,6 +117,42 @@ def get_2d_corresp(ref_img_2d_3d, matches):
     return np.array(new_img_2d_3d)
 
 
+
+def plot_camera_poses(poses, ref_imgs):
+
+    colormap = ['y', 'b', 'c', 'm', 'r', 'k']
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+
+
+    for c, p in zip(colormap, poses):
+
+        # extract the camera pose
+        pose = poses[p]
+        R = pose[:, 0:3]
+        C = pose[:, 3:]
+
+        # extract the 3d correspondences
+        corresp_2d_3d = ref_imgs[p]
+        X = corresp_2d_3d[:, 2:]
+
+        # plot the cameras
+
+        euler_angles = rotationMatrixToEulerAngles(R)
+        angles_camera = np.rad2deg(euler_angles)
+
+        t = mpl.markers.MarkerStyle(marker=mpl.markers.CARETDOWN)
+        t._transform = t.get_transform().rotate_deg(int(angles_camera[1]))
+
+        # ax.plot(-C[0], -C[2], marker=(3, 0, int(angles_camera[1])), markersize=15, color=colormap[i])
+        ax.scatter((-C[0]), (-C[2]), marker=t, s=250, color=c)
+        ax.scatter(X[:, 0], X[:, 2], s=4, color=c)
+    plt.xlim(-15, 20)
+    plt.ylim(-30, 40)
+    plt.show()
+
+
 def main():
 
     # path to load the data from
@@ -129,7 +168,6 @@ def main():
                 "matches35", "matches36",
                 "matches45", "matches46", "matches56"]
 
-    image_nums = [[0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3], [2, 4], [2, 5], [3, 4], [3, 5], [4, 5]]
 
     # given camera calibration matrix
     K = np.array([[568.996140852, 0, 643.21055941], [0, 568.988362396, 477.982801038], [0, 0, 1]])
@@ -143,19 +181,20 @@ def main():
     # M1 = M1.astype(float32)
 
     # for each image pairs compute F, E
-    # get inliers and fundamental matrix using RANSAC
+
+    '''.............................get inliers and fundamental matrix using RANSAC...........................'''
     file_name=file_names[0]
     max_inliers_locs, min_outliers_locs, F_max_inliers, pts_left, pts_right = get_inliers_ransac(path, file_name)
 
     # plotting correspondences for inliers
     plot_correspondences(images[0], images[1], max_inliers_locs, min_outliers_locs, file_name)
 
-    # get essential matrix
+    '''.............................essential matrix...........................'''
     E = estimate_e_matrix(F_max_inliers, K)
     C2_list, R2_list = extract_camera_pose(E)
 
 
-    # disambiguate camera pose and get the best pose of cam right and 3D points
+    '''.............................disambiguate pose of cam 2...........................'''
     R2, C2, X_list, index = disambiguate_camera_pose(M1, C2_list, R2_list, K, max_inliers_locs)
 
     # construct pose of camera 2
@@ -163,36 +202,69 @@ def main():
     M2 = np.hstack((I, -C2))
     M2 = np.dot(K, np.dot(R2, M2))
 
-    # perform non-linear triangulation to get refined 3D points
+    '''.............................non linear triangulation...........................'''
     X_list_refined =  nonlinear_triang(M1, M2, X_list, max_inliers_locs, K)
 
     # compare non-linear triangulation with linear by plot
     linear_vs_non_linear(X_list, X_list_refined, index)
 
-    # use linear pnp to estimate pose of remaining cams(3, 4, 5, 6) using the matchings
-    # (1, 3), (1, 4), (3, 5) (3, 6)
+    # create a dict to store all the poses
+    poses = {}
+
+    # store the pose of 1st and 2nd cam
+    poses[1] = np.identity(4)[0:3, :]
+    poses[2] = np.dot(R2, np.hstack((np.identity(3), -C2)))
+
+    '''.............................PnP to estimate remaining poses...........................'''
+    # using correspondences between the following image pairs for PnP
+    image_nums = [[2, 3], [3, 4], [4, 5], [5, 6]]
+
+    # create a dict consisting of ref image 2d-3d correspondences
+    ref_imgs = {}
 
     # first we need to get inliers of image i(3-6) wrt previously estimated camera pose so that we
     # match the 2D image point with the already calculated 3D point
     pts_ref_img = max_inliers_locs[:, 0:2]
     X_list_refined = np.reshape(X_list_refined, (pts_ref_img.shape[0], 3))
     ref_img_2d_3d = np.hstack((pts_ref_img, X_list_refined))
-    print(np.shape(ref_img_2d_3d))
+    ref_imgs[1] = ref_img_2d_3d
 
-    # next we must compare it with the points found using given matches
-    file_name = file_names[1]
-    matches = get_pts_from_txt(path, file_name+".txt")
-    matches = np.array(matches, np.float32)
+    # same thing for image 2
+    pts_ref_img = max_inliers_locs[:, 2:4]
+    ref_img_2d_3d = np.hstack((pts_ref_img, X_list_refined))
+    ref_imgs[2] = ref_img_2d_3d
 
-    new_img_2d_3d = get_2d_corresp(ref_img_2d_3d, matches)
-    print(np.shape(new_img_2d_3d))
+    # estimate pose for the remaining cams
+    for _, nums in enumerate(image_nums):
 
-    # use the 2d-3d correspondences to find the pose of the new cam
-    R_new, C_new = linear_pnp(new_img_2d_3d, K)
-    pose_new = np.hstack((R_new, C_new))
-    # print(pose_new)
+        ref_img_num = nums[0]
+        new_img_num = nums[1]
 
-    
+        file_name = "matches"+str(ref_img_num)+str(new_img_num)+".txt"
+        print(file_name)
+
+        # get the 2d-3d correspondences for the ref image
+        ref_img_2d_3d = ref_imgs[ref_img_num]
+
+        # next we must compare it with the points found using given matches
+        matches = get_pts_from_txt(path, file_name)
+        matches = np.array(matches, np.float32)
+        # print(np.shape(matches))
+
+        new_img_2d_3d = get_2d_corresp(ref_img_2d_3d, matches)
+        print(np.shape(new_img_2d_3d))
+
+        # add it to ref_imgs for future use
+        ref_imgs[new_img_num] = new_img_2d_3d
+
+        # use the 2d-3d correspondences to find the pose of the new cam
+        R_new, C_new = linear_pnp(new_img_2d_3d, K)
+        pose_new = np.hstack((R_new, C_new))
+        print(pose_new)
+        poses[new_img_num] = pose_new
+
+    # plot all the poses
+    plot_camera_poses(poses, ref_imgs)
 
 if __name__ == '__main__':
     main()

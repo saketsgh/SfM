@@ -1,27 +1,9 @@
-from EstimateFundamentalMatrix import estimate_f_matrix
 import random
 import os
 import cv2
 import numpy as np
-
-
-def get_pts_from_txt(path, file_name):
-
-    os.chdir(path)
-
-    file = open(file_name, 'r')
-    content = file.readlines()
-
-    pts_from_txt = []
-
-    for line in content:
-        x1, y1, x2, y2, r, g, b = line.split()
-
-        pts_from_txt.append([np.float32(x1), np.float32(y1), np.float32(x2), np.float32(y2), int(r), int(g), int(b)])
-
-    os.chdir('../../Code/Part1')
-    return pts_from_txt
-
+from EstimateFundamentalMatrix import estimate_f_matrix
+from Misc.utils import*
 
 def get_inliers_ransac(path, file_name):
 
@@ -60,11 +42,11 @@ def get_inliers_ransac(path, file_name):
 
         # setting threshold
         # print(vals)
-        # inliers_index = np.where(vals<0.004)
-        # outliers_index = np.where(vals>=0.004)
-
         inliers_index = np.where(vals<0.005)
         outliers_index = np.where(vals>=0.005)
+
+        # inliers_index = np.where(vals<0.05)
+        # outliers_index = np.where(vals>=0.05)
 
         # checking for max_inliersand saving it's index
         if np.shape(inliers_index[0])[0] > max_inliers:
