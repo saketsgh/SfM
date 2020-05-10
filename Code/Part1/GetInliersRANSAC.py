@@ -3,13 +3,9 @@ import os
 import cv2
 import numpy as np
 from EstimateFundamentalMatrix import estimate_f_matrix
-from Misc.utils import*
 
-def get_inliers_ransac(path, file_name):
 
-    # load correspondences
-    pts_from_txt = get_pts_from_txt(path, file_name+".txt")
-    pts_from_txt = np.array(pts_from_txt, np.float32)
+def get_inliers_ransac(pts_from_txt):
 
     # seperate points into images
     pts_img1 = pts_from_txt[:, 0:2]

@@ -3,7 +3,8 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import math
 from LinearTriangulation import linear_triagulation
-from Misc.utils import*
+from Misc.utils import PlotFuncs
+
 
 def cheirality_check(C, R, X_list):
 
@@ -19,38 +20,6 @@ def cheirality_check(C, R, X_list):
     return count
 
 
-def plot_points(X_list, i, C, R):
-
-    # plot the points
-    X_list = np.array(X_list)
-
-    # reshape
-    X_list = X_list.reshape((X_list.shape[0], 3))
-
-    # extract x and z
-    x = X_list[:, 0]
-    z = X_list[:, 2]
-
-    colormap = np.array(['y', 'b', 'c', 'r'])
-
-    ax = plt.gca()
-
-    # extract euler angles(w.r.t y since plot is x vs z) to plot markers
-    ax.plot(0, 0, marker=mpl.markers.CARETDOWN, markersize=15, color = 'k')
-
-    euler_angles = rotationMatrixToEulerAngles(R)
-    angles_camera = np.rad2deg(euler_angles)
-
-    # plot the cameras
-    t = mpl.markers.MarkerStyle(marker=mpl.markers.CARETDOWN)
-    t._transform = t.get_transform().rotate_deg(int(angles_camera[1]))
-
-    # ax.plot(-C[0], -C[2], marker=(3, 0, int(angles_camera[1])), markersize=15, color=colormap[i])
-    ax.scatter((-C[0]), (-C[2]), marker=t, s=250, color=colormap[i])
-    ax.scatter(x, z, s=4, color=colormap[i])
-    # ax.scatter(-x, -z, s=4, color=colormap[i])
-
-
 def disambiguate_camera_pose(M1, C2_list, R2_list, K, inliers):
 
     # to keep track of the maximum X points
@@ -61,6 +30,10 @@ def disambiguate_camera_pose(M1, C2_list, R2_list, K, inliers):
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
+    plot_funcs = PlotFuncs()
+
+    print("plotting all the 4 obtained camera poses and their respective world points\n")
+    print("cheirality counts -->")
     # for each Rot and Translation
     for R, C in zip(R2_list, C2_list):
 
@@ -72,7 +45,7 @@ def disambiguate_camera_pose(M1, C2_list, R2_list, K, inliers):
         # number of 3D points satisfying cheirality
         count = cheirality_check(C, R, X_list)
 
-        plot_points(X_list, i, C, R)
+        plot_funcs.plot_triangulated_points(X_list, i, C, R)
         print(count)
         if(count > max_count):
             max_count = count
@@ -85,4 +58,5 @@ def disambiguate_camera_pose(M1, C2_list, R2_list, K, inliers):
     plt.xlim(-15, 20)
     plt.ylim(-30, 40)
     plt.show()
+    print("\n")
     return R_best, C_best, X_list_best, index
