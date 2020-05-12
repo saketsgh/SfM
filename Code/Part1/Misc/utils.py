@@ -53,7 +53,7 @@ class PlotFuncs:
         shiftX = np.float32(shiftX)
 
         # printing inliers
-        for i, p in enumerate(inlier_locs):
+        for i, p in enumerate(inlier_locs[:10]):
             x1, y1 = p[0], p[1]
             x2, y2 = p[2], p[3]
             # print("\n")
@@ -62,8 +62,9 @@ class PlotFuncs:
             cv2.circle(clubimage, (x2+shiftX, y2), 3, (255, 0, 0), 1)
             cv2.line(clubimage, (x1, y1), (x2+shiftX, y2), (0, 255, 0), 1)
 
+
         # # printing outliers
-        for _, p in enumerate(outlier_locs):
+        for _, p in enumerate(outlier_locs[:10]):
 
             x1, y1 = p[0], p[1]
             x2, y2 = p[2], p[3]
@@ -144,6 +145,22 @@ class PlotFuncs:
         plt.show()
 
 
+    def plot_reproj_points(self, image, image_num, pts_img_all, pts_img_reproj_all, save=False):
+
+        for p, p_rep in zip(pts_img_all, pts_img_reproj_all):
+            cv2.circle(image, (p[0], p[1]), 3, (255, 0, 0), 1)
+            cv2.circle(image, (p_rep[0], p_rep[1]), 3, (0, 0, 255), 1)
+            cv2.line(image, (p[0], p[1]), (p_rep[0], p_rep[1]), (0, 255, 255), 1)
+
+        image_name = "reproj_pts_"+str(image_num)
+        cv2.namedWindow(image_name, cv2.WINDOW_NORMAL)
+        cv2.resizeWindow(image_name, (image.shape[0]/2, image.shape[0]/2))
+        cv2.imshow(image_name, image)
+        cv2.waitKey(0)
+        if(save):
+            cv2.imwrite(image_name+".jpg", image)
+        cv2.destroyAllWindows()
+
 
 
 class MiscFuncs:
@@ -222,7 +239,7 @@ class MiscFuncs:
             ssd = ssd**2
             ssd = np.sum(ssd, axis=1)
             ssd = np.sqrt(ssd)
-            locs = np.where(ssd < 1e-3)[0]
+            locs = np.where(ssd < 1e-1)[0]
 
             if(np.shape(locs)[0] == 1):
                 # we got the same point from inliers calculated in previous steps and from the matches

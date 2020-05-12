@@ -54,7 +54,7 @@ def nonlinear_triang(M1, M2, X_list, inliers, K):
 
     # for pt_img1, pt_img2, X in zip(pts_img1, pts_img2, X_list):
         # X = X.reshape(X.shape[0],)
-    result = optimize.least_squares(fun=optimize_params,x0=X_list.flatten(), method="dogbox", args=[pts_img1, M1, pts_img2, M2, X_list],ftol=1e-10)
+    result = optimize.least_squares(fun=optimize_params,x0=X_list.flatten(), method="trf", args=[pts_img1, M1, pts_img2, M2, X_list],ftol=1e-10)
         # X_ref = result.x
         # X_ref = X_ref.reshape((3,))
     # X_list_ref.append(X_ref)
