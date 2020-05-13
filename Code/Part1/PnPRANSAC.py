@@ -30,43 +30,41 @@ def compute_reproj_err_all(pts_img_all, M, X_all, ret=False):
 
 def pnp_ransac(corresp_2d_3d, K):
 
-    # for each set of correspondences for images 3-6
-    pose_new = {}
-    for p in range(3, 7):
+    thresh = 20
 
-        # extract point correspondences of given camera
-        corresp = corresp_2d_3d[p]
+    # extract point correspondences of given camera
+    corresp = corresp_2d_3d
 
-        max_inliers = 0
+    max_inliers = 0
 
-        # perform RANSAC to estimate the best pose
-        for i in range(5000):
+    # perform RANSAC to estimate the best pose
+    for i in range(5000):
 
-            # choose 6 random points and get linear pnp estimate
-            corresp6 = np.array(random.sample(corresp, 6), np.float32)
-            R, C = linear_pnp(corresp6, K)
+        # choose 6 random points and get linear pnp estimate
+        corresp6 = np.array(random.sample(corresp, 6), np.float32)
+        R, C = linear_pnp(corresp6, K)
 
-            # form the projection matrix
-            C = C.reshape((3, 1))
-            I = np.identity(3)
-            M = np.hstack((I, -C))
-            M = np.dot(K, np.dot(R, M))
+        # form the projection matrix
+        C = C.reshape((3, 1))
+        I = np.identity(3)
+        M = np.hstack((I, -C))
+        M = np.dot(K, np.dot(R, M))
 
-            # calculate reproj_err for all points
-            pts_img_all = corresp[:, 0:2]
-            X_all = corresp[:, 2:]
+        # calculate reproj_err for all points
+        pts_img_all = corresp[:, 0:2]
+        X_all = corresp[:, 2:]
 
-            reproj_err = compute_reproj_err_all(pts_img_all, M, X_all)
-            locs = np.where(reproj_err < 20)[0]
-            count = np.shape(locs)[0]
-            if count > max_inliers:
-                max_inliers = count
-                R_best = R
-                C_best = C
+        reproj_err = compute_reproj_err_all(pts_img_all, M, X_all)
+        locs = np.where(reproj_err < thresh)[0]
+        count = np.shape(locs)[0]
+        if count > max_inliers:
+            max_inliers = count
+            inliers = corresp[locs]
+            R_best = R
+            C_best = C
 
-        pose_best = np.hstack((R_best, C_best))
-        pose_new[p] = pose_best
-        print(max_inliers)
-        print("......................................")
+    pose_best = np.hstack((R_best, C_best))
+    print(max_inliers)
+    print("......................................")
 
-    return pose_new
+    return pose_best, inliers

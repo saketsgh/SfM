@@ -38,8 +38,8 @@ def get_inliers_ransac(pts_from_txt):
 
         # setting threshold
         # print(vals)
-        inliers_index = np.where(vals<0.07)
-        outliers_index = np.where(vals>=0.07)
+        inliers_index = np.where(vals<0.005)
+        outliers_index = np.where(vals>=0.005)
 
         # inliers_index = np.where(vals<0.05)
         # outliers_index = np.where(vals>=0.05)

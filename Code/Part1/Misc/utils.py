@@ -53,7 +53,7 @@ class PlotFuncs:
         shiftX = np.float32(shiftX)
 
         # printing inliers
-        for i, p in enumerate(inlier_locs[:10]):
+        for i, p in enumerate(inlier_locs):
             x1, y1 = p[0], p[1]
             x2, y2 = p[2], p[3]
             # print("\n")
@@ -64,7 +64,7 @@ class PlotFuncs:
 
 
         # # printing outliers
-        for _, p in enumerate(outlier_locs[:10]):
+        for _, p in enumerate(outlier_locs):
 
             x1, y1 = p[0], p[1]
             x2, y2 = p[2], p[3]
@@ -226,7 +226,7 @@ class MiscFuncs:
         return images
 
 
-    def get_2d_corresp(self, ref_img_2d_3d, matches):
+    def get_2d_3d_corresp(self, ref_img_2d_3d, matches):
 
         new_img_2d_3d = []
         for pts in matches:
@@ -239,7 +239,7 @@ class MiscFuncs:
             ssd = ssd**2
             ssd = np.sum(ssd, axis=1)
             ssd = np.sqrt(ssd)
-            locs = np.where(ssd < 1e-1)[0]
+            locs = np.where(ssd < 1e-3)[0]
 
             if(np.shape(locs)[0] == 1):
                 # we got the same point from inliers calculated in previous steps and from the matches
@@ -247,3 +247,14 @@ class MiscFuncs:
                 ref_img_2d_3d[locs][0][2], ref_img_2d_3d[locs][0][3], ref_img_2d_3d[locs][0][4]])
 
         return np.array(new_img_2d_3d)
+
+
+    def get_projection_matrix(K, R, C):
+
+        R = R.reshape((3, 3))
+        C = C.reshape((3, 1))
+        I = np.identity(3)
+        M = np.hstack((I, -C))
+        M = np.dot(K, np.dot(R, M))
+
+        return M
