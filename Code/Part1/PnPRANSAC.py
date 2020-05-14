@@ -30,7 +30,7 @@ def compute_reproj_err_all(pts_img_all, M, X_all, ret=False):
 
 def pnp_ransac(corresp_2d_3d, K):
 
-    thresh = 20
+    thresh = 10
 
     # extract point correspondences of given camera
     corresp = corresp_2d_3d
@@ -64,7 +64,6 @@ def pnp_ransac(corresp_2d_3d, K):
             C_best = C
 
     pose_best = np.hstack((R_best, C_best))
-    print(max_inliers)
-    print("......................................")
+    # print(max_inliers)
 
     return pose_best, inliers

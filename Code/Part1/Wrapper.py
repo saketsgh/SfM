@@ -41,7 +41,7 @@ def main():
     # "matches24", "matches34", "matches35", "matches36",
     # "matches45", "matches46", "matches56"
     # file_nums = [[1, 2], [1, 3], [1, 4], [2, 3],[2, 4], [3, 4],[3, 5], [3, 6],[4, 5], [4, 6],[5, 6]]
-    #
+    # #
     # for nums in file_nums:
     #     img_l = nums[0]
     #     img_r = nums[1]
@@ -55,7 +55,7 @@ def main():
     #     print("plotting correspondences between images - " + str(nums[0]) + str(nums[1]))
     #     print("count - {}".format(pts_from_txt.shape[0]))
     #     plot_funcs.plot_img_correspondences(images[nums[0]-1], images[nums[1]-1], pts_from_txt, [], file_name)
-
+    np.random.seed(2)
     # given camera calibration matrix
     K = np.array([
                 [568.996140852, 0, 643.21055941],
@@ -77,7 +77,6 @@ def main():
     pts_from_txt = misc_funcs.get_pts_from_txt(path, file_name)
     pts_from_txt = np.array(pts_from_txt, np.float32)
     max_inliers_locs, min_outliers_locs, F_max_inliers, pts_left, pts_right = get_inliers_ransac(pts_from_txt)
-
 
     # plotting correspondences for inliers
     plot_funcs = PlotFuncs()
@@ -108,7 +107,8 @@ def main():
     plot_funcs.linear_vs_non_linear(X_list, X_list_refined, index)
 
     # create a dict to store all the poses
-    poses = {}
+    pose_set = {}
+    mean_proj_error = {}
 
     # store the pose of 1st and 2nd cam
     pose_set[1] = np.identity(4)[0:3, :]
@@ -158,19 +158,19 @@ def main():
 
         ref_img_num = nums[0]
         new_img_num = nums[1]
-
-        file_name = "matches"+str(ref_img_num)+str(new_img_num)+".txt"
+        img_pair = str(nums[0])+str(nums[1])
+        file_name = "ransac"+img_pair+".txt"
         print("using correspondences from file " + file_name)
 
-        # get the 2d-3d correspondences for the ref image
+        # get the 2d-3d correspondences for the 1st ref image
         ref_img_2d_3d = corresp_2d_3d[ref_img_num]
 
         # next we must compare it with the points found using given matches
-        matches_2d_2d = misc_funcs.get_pts_from_txt(path, file_name)
-        matches_2d_2d = np.array(matches_2d_2d, np.float32)
-        # print("p --> {}".format(nums[1]))
+        matches_2d_2d = misc_funcs.get_ransac_pts_from_txt(path, file_name)
+        matches_2d_2d = np.array(matches_2d_2d)
 
-        new_img_2d_3d = misc_funcs.get_2d_3d_corresp(ref_img_2d_3d, matches_2d_2d)
+        # obtain the 3D corresp for the new image
+        new_img_2d_3d, remaining_2d_2d = misc_funcs.get_2d_3d_corresp(ref_img_2d_3d, matches_2d_2d)
         print("shape of 2d-3d correspondences {}".format(np.shape(new_img_2d_3d)))
 
         '''.............................PnP RANSAC...........................'''
@@ -181,59 +181,54 @@ def main():
         print("performing Non-linear PnP to obtain optimal pose")
         pose_non_linear = nonlinear_pnp(K, pose_pnp_ransac, pnp_inlier_corresp)
 
-        R_new = poses_non_linear[:, 0:3]
-        C_new = poses_non_linear[:, 3]
-        M_new = misc_funcs.get_projection_matrix(K, R_new, C_new))
+        R_new = pose_non_linear[:, 0:3]
+        C_new = pose_non_linear[:, 3].reshape((3, 1))
+        M_new = misc_funcs.get_projection_matrix(K, R_new, C_new)
 
         # construct projection matrix of ref image
         R_ref = pose_set[nums[0]][:, 0:3]
-        C_ref = pose_set[nums[0]][:, 3]
-        M_ref = misc_funcs.get_projection_matrix(K, R_ref, C_ref))
+        C_ref = pose_set[nums[0]][:, 3].reshape((3, 1))
+        M_ref = misc_funcs.get_projection_matrix(K, R_ref, C_ref)
 
         # find the 2d-3d mapping for the remaining image points in the new image by doing triangulation
-        X_new = linear_triagulation(M_ref, C_new, R_new, K, matches_2d_2d)
-        X_new_ref = nonlinear_triang(M_ref, M_new, X_new, matches_2d_2d, K)
+        X_new = linear_triagulation(M_ref, C_new, R_new, K, remaining_2d_2d)
+        X_new_ref = nonlinear_triang(M_ref, M_new, X_new, remaining_2d_2d, K)
+        X_new_ref = X_new_ref.reshape((remaining_2d_2d.shape[0], 3))
 
-        new_img_2d_3d = matches_2d_2d[:, 2:4]
-        new_img_2d_3d = np.hstack((new_img_2d_3d, X_new_ref.reshape((new_img_2d_3d.shape[0], 3))))
+        remaining_2d_3d = remaining_2d_2d[:, 2:4]
+        print("points before adding remaining corresp - {}".format(new_img_2d_3d.shape))
+        new_img_2d_3d = np.vstack((new_img_2d_3d, np.hstack((remaining_2d_3d, X_new_ref))))
+        print("points after adding remaining corresp - {}".format(new_img_2d_3d.shape))
+        print("......................................")
 
-        # add it to ref_imgs for future use
+        # Save the correspondences (2D-3D) and the poses
         corresp_2d_3d[new_img_num] = new_img_2d_3d
-        pose_set[new_img_num] = np.hstack((R_ref, C_ref.reshape((3, 1))))
-        # # use the 2d-3d correspondences to find the pose of the new cam
+        pose_set[new_img_num] = np.hstack((R_new, C_new))
+
+        # use the 2d-3d correspondences to find the pose of the new cam
         # R_new, C_new = linear_pnp(new_img_2d_3d, K)
         # C_new = C_new.reshape((3, 1))
         # poses[new_img_num] = np.hstack((R_new, C_new))
-        #
-        # plot_funcs.plot_reproj_points(images[nums[0]-1], nums[0], np.float32(ref_img_2d_3d[:, 0:2]), np.float32(matches[:, 0:2]))
-        #
-        #
-        # # plot all the poses
+
+        # plot all the poses
         # print("plotting all the camera poses and their respective correspondences\n")
         # plot_funcs.plot_camera_poses(poses, corresp_2d_3d)
 
+        # print reprojection error after non-linear pnp
+        pts_img_all = new_img_2d_3d[:, 0:2]
+        X_all = new_img_2d_3d[:, 2:]
+
+        reproj_errors, pts_img_reproj_all = compute_reproj_err_all(pts_img_all, M_new, X_all, ret=True)
+
+        mean_proj_error[new_img_num] = np.mean(reproj_errors)
+
+        # plotting reprojected points
+        plot_funcs.plot_reproj_points(images[new_img_num-1], new_img_num, np.float32(pts_img_all), np.float32(pts_img_reproj_all), save=True)
+
+    print(mean_proj_error)
+    print(pose_set)
 
 
-        # # print reprojection error after non-linear pnp
-        # mean_proj_error = {}
-        # for p in poses_non_linear:
-        #
-        #     pts_img_all = pnp_inlier_corresp[p][:, 0:2]
-        #     X_all = pnp_inlier_corresp[p][:, 2:]
-        #     R = poses_non_linear[p][:, 0:3]
-        #     C = poses_non_linear[p][:, 3].reshape((3, 1))
-        #
-        #     # compute projection matrix
-        #     M = np.dot(K, np.dot(R, np.hstack((np.identity(3), -C))))
-        #     reproj_errors, pts_img_reproj_all = compute_reproj_err_all(pts_img_all, M, X_all, ret=True)
-        #
-        #     mean_proj_error[p] = np.mean(reproj_errors)
-        #
-        #     # plotting reprojected points
-        #     plot_funcs.plot_reproj_points(images[p-1], p, np.float32(pts_img_all), np.float32(pts_img_reproj_all))
-        #     print(np.mean(reproj_errors))
-        #
-        # print(mean_proj_error)
 
 if __name__ == '__main__':
     main()

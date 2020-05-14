@@ -183,6 +183,24 @@ class MiscFuncs:
         return pts_from_txt
 
 
+    def get_ransac_pts_from_txt(self, path, file_name):
+
+        os.chdir(path)
+
+        file = open(file_name, 'r')
+        content = file.readlines()
+
+        pts_from_txt = []
+
+        for line in content:
+            x1, y1, x2, y2 = line.split()
+
+            pts_from_txt.append([np.float32(x1), np.float32(y1), np.float32(x2), np.float32(y2)])
+
+        os.chdir('../../Code/Part1')
+        return pts_from_txt
+
+
     # Checks if a matrix is a valid rotation matrix.
     def isRotationMatrix(self, R):
 
@@ -229,6 +247,8 @@ class MiscFuncs:
     def get_2d_3d_corresp(self, ref_img_2d_3d, matches):
 
         new_img_2d_3d = []
+        remaining_2d_2d = []
+
         for pts in matches:
             matches_ref_img = pts[0:2]
             matches_new_img = pts[2:4]
@@ -246,10 +266,13 @@ class MiscFuncs:
                 new_img_2d_3d.append([matches_new_img[0], matches_new_img[1],
                 ref_img_2d_3d[locs][0][2], ref_img_2d_3d[locs][0][3], ref_img_2d_3d[locs][0][4]])
 
-        return np.array(new_img_2d_3d)
+            else:
+                remaining_2d_2d.append(pts)
+
+        return np.array(new_img_2d_3d), np.array(remaining_2d_2d)
 
 
-    def get_projection_matrix(K, R, C):
+    def get_projection_matrix(self, K, R, C):
 
         R = R.reshape((3, 3))
         C = C.reshape((3, 1))

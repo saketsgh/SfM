@@ -68,33 +68,33 @@ def optimize_params(x0, M, pts_img_all, X_all):
 
 def nonlinear_pnp(K, pose, corresp_2d_3d):
 
-    # extract image points
-    poses_non_linear = {}
+	# extract image points
+	poses_non_linear = {}
 
-    # extract point correspondences of given camera
-    corresp = corresp_2d_3d
-    pts_img_all = corresp[:, 0:2]
-    X_all = corresp[:, 2:]
+	# extract point correspondences of given camera
+	corresp = corresp_2d_3d
+	pts_img_all = corresp[:, 0:2]
+	X_all = corresp[:, 2:]
 
-    # make the projection projection matrix
-    R = pose[:, 0:3]
-    C = pose[:, 3]
-    C = C.reshape((3, 1))
-    M = np.dot(K, np.dot(R, np.hstack((np.identity(3), -C))))
+	# make the projection projection matrix
+	R = pose[:, 0:3]
+	C = pose[:, 3]
+	C = C.reshape((3, 1))
+	M = np.dot(K, np.dot(R, np.hstack((np.identity(3), -C))))
 
-    # convert rotation matrix to quaternion form
-    Q = rot2Quat(R)
+	# convert rotation matrix to quaternion form
+	Q = rot2Quat(R)
 
-    # defining the paramerter to optimize
+	# defining the paramerter to optimize
 	x0 = np.append(Q, C)
 
-	result = least_squares(fun=optimize_params, x0=x0, args=(M, pts_img_all, X_all), method='lm', ftol=1e-10)
+	result = least_squares(fun=optimize_params, x0=x0, args=(M, pts_img_all, X_all), method="lm")
 	opt = result.x
 
-    # quaternion to rotation matrix
+	# quaternion to rotation matrix
 	R_best = quat2Rot(opt[:4])
 	C_best = opt[4:]
-    C_best = C_best.reshape((3, 1))
-    pose_best = np.hstack((R_best, C_best))
+	C_best = C_best.reshape((3, 1))
+	pose_best = np.hstack((R_best, C_best))
 
-    return pose_best
+	return pose_best
