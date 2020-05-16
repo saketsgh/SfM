@@ -22,10 +22,12 @@ class PlotFuncs:
         x_l = X_linear[:, 0]
         z_l = X_linear[:, 2]
 
-        x_indices = range(0, np.shape(X_non_linear)[0], 3)
-        z_indices = range(2, np.shape(X_non_linear)[0], 3)
-        x_nl = X_non_linear[x_indices]
-        z_nl = X_non_linear[z_indices]
+        # x_indices = range(0, np.shape(X_non_linear)[0], 3)
+        # z_indices = range(2, np.shape(X_non_linear)[0], 3)
+        # x_nl = X_non_linear[x_indices]
+        # z_nl = X_non_linear[z_indices]
+        x_nl = X_non_linear[:, 0]
+        z_nl = X_non_linear[:, 2]
 
         # plot linear and non linear points and compare
         fig = plt.figure()
@@ -112,7 +114,7 @@ class PlotFuncs:
         ax.scatter(x, z, s=4, color=colormap[i])
 
 
-    def plot_camera_poses(self, poses, corresp_2d_3d):
+    def plot_camera_poses(self, poses, corresp_2d_3d, save=False):
 
         colormap = ['y', 'b', 'c', 'm', 'r', 'k']
 
@@ -125,7 +127,7 @@ class PlotFuncs:
             # extract the camera pose
             pose = poses[p]
             R = pose[:, 0:3]
-            C = pose[:, 3:]
+            C = pose[:, 3]
 
             # extract the 3d correspondences
             corr2d3d = corresp_2d_3d[p]
@@ -137,12 +139,16 @@ class PlotFuncs:
 
             t = mpl.markers.MarkerStyle(marker=mpl.markers.CARETDOWN)
             t._transform = t.get_transform().rotate_deg(int(angles_camera[1]))
+            ax = plt.gca()
             ax.scatter((C[0]), (C[2]), marker=t, s=250, color=c)
             ax.scatter(X[:, 0], X[:, 2], s=4, color=c)
-
-        plt.xlim(-10, 20)
-        plt.ylim(-10, 40)
+        plt.xlim(-30, 20)
+        plt.ylim(-30, 40)
+        if(save):
+            plt.savefig('op.png')
         plt.show()
+
+
 
 
     def plot_reproj_points(self, image, image_num, pts_img_all, pts_img_reproj_all, save=False):

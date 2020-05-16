@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.optimize import least_squares
-
+from Misc.utils import MiscFuncs
 
 def rot2Quat(rot):
 
@@ -53,17 +53,23 @@ def compute_reproj_err(M, pt_img, X):
     return reproj_err
 
 
-def optimize_params(x0, M, pts_img_all, X_all):
+def optimize_params(x0, K, pts_img_all, X_all):
 
-    # calculate reprojection error
-    reproj_err_all = []
-    for pt_img, X in zip(pts_img_all, X_all):
-        reproj_err = compute_reproj_err(M, pt_img, X)
-        reproj_err_all.append(reproj_err)
-    reproj_err_all = np.array(reproj_err_all)
-    reproj_err_all = reproj_err_all.reshape(reproj_err_all.shape[0],)
+	# calculate reprojection error
+	reproj_err_all = []
+	R = quat2Rot(x0[:4])
+	C = x0[4:]
 
-    return reproj_err_all
+	misc_funcs = MiscFuncs()
+	M = misc_funcs.get_projection_matrix(K, R, C)
+
+	for pt_img, X in zip(pts_img_all, X_all):
+	    reproj_err = compute_reproj_err(M, pt_img, X)
+	    reproj_err_all.append(reproj_err)
+	reproj_err_all = np.array(reproj_err_all)
+	reproj_err_all = reproj_err_all.reshape(reproj_err_all.shape[0],)
+
+	return reproj_err_all
 
 
 def nonlinear_pnp(K, pose, corresp_2d_3d):
@@ -80,7 +86,6 @@ def nonlinear_pnp(K, pose, corresp_2d_3d):
 	R = pose[:, 0:3]
 	C = pose[:, 3]
 	C = C.reshape((3, 1))
-	M = np.dot(K, np.dot(R, np.hstack((np.identity(3), -C))))
 
 	# convert rotation matrix to quaternion form
 	Q = rot2Quat(R)
@@ -88,7 +93,7 @@ def nonlinear_pnp(K, pose, corresp_2d_3d):
 	# defining the paramerter to optimize
 	x0 = np.append(Q, C)
 
-	result = least_squares(fun=optimize_params, x0=x0, args=(M, pts_img_all, X_all), method="lm")
+	result = least_squares(fun=optimize_params, x0=x0, args=(K, pts_img_all, X_all), ftol=1e-10)
 	opt = result.x
 
 	# quaternion to rotation matrix

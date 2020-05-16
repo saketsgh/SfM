@@ -5,7 +5,7 @@ import numpy as np
 from EstimateFundamentalMatrix import estimate_f_matrix
 
 
-def get_inliers_ransac(pts_from_txt):
+def get_inliers_ransac(pts_from_txt, thresh=0.005):
 
     # seperate points into images
     pts_img1 = pts_from_txt[:, 0:2]
@@ -38,8 +38,8 @@ def get_inliers_ransac(pts_from_txt):
 
         # setting threshold
         # print(vals)
-        inliers_index = np.where(vals<0.005)
-        outliers_index = np.where(vals>=0.005)
+        inliers_index = np.where(vals<thresh)
+        outliers_index = np.where(vals>=thresh)
 
         # inliers_index = np.where(vals<0.05)
         # outliers_index = np.where(vals>=0.05)

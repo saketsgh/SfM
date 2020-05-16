@@ -21,6 +21,7 @@ def compute_reproj_err_all(pts_img_all, M, X_all, ret=False):
     reproj_err = pts_img_all - pts_img_proj_all
     reproj_err = reproj_err**2
     reproj_err = np.sum(reproj_err, axis=1)
+    # reproj_err = np.sqrt(reproj_err)
 
     if(ret):
         return reproj_err, pts_img_proj_all
@@ -28,9 +29,7 @@ def compute_reproj_err_all(pts_img_all, M, X_all, ret=False):
     return reproj_err
 
 
-def pnp_ransac(corresp_2d_3d, K):
-
-    thresh = 10
+def pnp_ransac(corresp_2d_3d, K, thresh = 20):
 
     # extract point correspondences of given camera
     corresp = corresp_2d_3d
@@ -38,7 +37,7 @@ def pnp_ransac(corresp_2d_3d, K):
     max_inliers = 0
 
     # perform RANSAC to estimate the best pose
-    for i in range(5000):
+    for i in range(10000):
 
         # choose 6 random points and get linear pnp estimate
         corresp6 = np.array(random.sample(corresp, 6), np.float32)
@@ -64,6 +63,7 @@ def pnp_ransac(corresp_2d_3d, K):
             C_best = C
 
     pose_best = np.hstack((R_best, C_best))
-    # print(max_inliers)
+    print("max inliers after pnp ransac - ")
+    print(max_inliers)
 
     return pose_best, inliers

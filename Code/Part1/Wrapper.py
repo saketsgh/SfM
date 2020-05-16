@@ -13,6 +13,7 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+import time
 
 from GetInliersRANSAC import get_inliers_ransac
 from EssentialMatrixFromFundamentalMatrix import estimate_e_matrix
@@ -100,7 +101,10 @@ def main():
 
     '''.............................non linear triangulation...........................'''
     print("performing non-linear triangulation to refine X\n")
+    start = time.time()
     X_list_refined =  nonlinear_triang(M1, M2, X_list, max_inliers_locs, K)
+    end = time.time()
+    print("time taken for non linear triang - {}".format(start-end))
 
     # compare non-linear triangulation with linear by plot
     print("comapring linear and non linear triangulation\n")
@@ -160,6 +164,7 @@ def main():
         new_img_num = nums[1]
         img_pair = str(nums[0])+str(nums[1])
         file_name = "ransac"+img_pair+".txt"
+        # file_name = "matches"+img_pair+".txt"
         print("using correspondences from file " + file_name)
 
         # get the 2d-3d correspondences for the 1st ref image
@@ -167,6 +172,7 @@ def main():
 
         # next we must compare it with the points found using given matches
         matches_2d_2d = misc_funcs.get_ransac_pts_from_txt(path, file_name)
+        # matches_2d_2d = misc_funcs.get_pts_from_txt(path, file_name)
         matches_2d_2d = np.array(matches_2d_2d)
 
         # obtain the 3D corresp for the new image
@@ -175,7 +181,7 @@ def main():
 
         '''.............................PnP RANSAC...........................'''
         print("performing PnP RANSAC to refine the poses")
-        pose_pnp_ransac, pnp_inlier_corresp = pnp_ransac(new_img_2d_3d, K)
+        pose_pnp_ransac, pnp_inlier_corresp = pnp_ransac(new_img_2d_3d, K, thresh=200)
 
         '''.............................Non-linear PnP...........................'''
         print("performing Non-linear PnP to obtain optimal pose")
@@ -211,8 +217,7 @@ def main():
         # poses[new_img_num] = np.hstack((R_new, C_new))
 
         # plot all the poses
-        # print("plotting all the camera poses and their respective correspondences\n")
-        # plot_funcs.plot_camera_poses(poses, corresp_2d_3d)
+
 
         # print reprojection error after non-linear pnp
         pts_img_all = new_img_2d_3d[:, 0:2]
@@ -225,6 +230,8 @@ def main():
         # plotting reprojected points
         plot_funcs.plot_reproj_points(images[new_img_num-1], new_img_num, np.float32(pts_img_all), np.float32(pts_img_reproj_all), save=True)
 
+    print("plotting all the camera poses and their respective correspondences\n")
+    plot_funcs.plot_camera_poses(pose_set, corresp_2d_3d, save=True)
     print(mean_proj_error)
     print(pose_set)
 

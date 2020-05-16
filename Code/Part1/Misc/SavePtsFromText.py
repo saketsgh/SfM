@@ -49,8 +49,11 @@ def save_ransac_pts(path):
     image_nums = [[2, 3], [3, 4], [4, 5], [5, 6]]
     corresp_2d_2d = {}
     misc_funcs = MiscFuncs()
+
     cur_path = os.getcwd()
-    for nums in image_nums:
+    # thresholds = [0.001, 0.002] perfect for 3 and 4
+    thresholds = [0.0025, 0.0025, 0.001, 0.002]
+    for nums, thresh in zip(image_nums, thresholds):
         img_pair = str(nums[0])+str(nums[1])
         file_name = "matches"+img_pair+".txt"
         print("using correspondences from file "+file_name)
@@ -58,7 +61,7 @@ def save_ransac_pts(path):
         pts_from_txt = misc_funcs.get_pts_from_txt(path, file_name)
         os.chdir("../../Data/Data")
         pts_from_txt = np.array(pts_from_txt, np.float32)
-        inlier_locs, _, _, _, _ = get_inliers_ransac(pts_from_txt)
+        inlier_locs, _, _, _, _ = get_inliers_ransac(pts_from_txt, thresh)
 
 
         save_file_name = "ransac"+img_pair
