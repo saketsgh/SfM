@@ -24,6 +24,7 @@ from NonlinearTriangulation import nonlinear_triang
 from LinearPnP import linear_pnp
 from PnPRANSAC import pnp_ransac, compute_reproj_err_all
 from NonlinearPnP import nonlinear_pnp
+from BundleAdjustment import bundle_adjustment
 from Misc.utils import PlotFuncs
 from Misc.utils import MiscFuncs
 
@@ -128,6 +129,9 @@ def main():
     # create a dict consisting of 2d-3d correspondences of all images
     corresp_2d_3d = {}
 
+    # X_set stores all the 3d points
+    X_set = []
+
     # first we need to get inliers of image i(3-6) wrt previously estimated camera pose so that we
     # match the 2D image point with the already calculated 3D point
     img1_2d_3d = max_inliers_locs[:, 0:2]
@@ -140,31 +144,23 @@ def main():
     img2_2d_3d = np.hstack((img2_2d_3d, X_list_refined))
     corresp_2d_3d[2] = img2_2d_3d
 
-    # err_all = []
-    # for p in img2_2d_3d:
-    #
-    #     x, y = p[0], p[1]
-    #     X = p[2:].reshape((3, 1))
-    #     X = np.append(X, 1)
-    #
-    #     proj = np.dot(M2, X)
-    #     x_p = proj[0]/proj[2]
-    #     y_p = proj[1]/proj[2]
-    #
-    #     err = (x-x_p)**2 + (y-y_p)**2
-    #     err_all.append(err)
-    #
-    # err_all = np.array(err_all)
-    # print(np.mean(err_all))
+    # add the 3d points to X_set
+    X_set.append(X_list_refined)
+    X_set = np.array(X_set).reshape((X_list_refined.shape))
+
+    # map is used for BA. It stores image points and indices of corresp 3d points
+    map_2d_3d = {}
+    map_2d_3d[1] = zip(corresp_2d_3d[1][:, 0:2], range(X_set.shape[0]))
+    map_2d_3d[2] = zip(corresp_2d_3d[2][:, 0:2], range(X_set.shape[0]))
 
     # estimate pose for the remaining cams
     for _, nums in enumerate(image_nums):
 
         ref_img_num = nums[0]
         new_img_num = nums[1]
-        img_pair = str(nums[0])+str(nums[1])
+        img_pair = str(ref_img_num)+str(new_img_num)
         file_name = "ransac"+img_pair+".txt"
-        # file_name = "matches"+img_pair+".txt"
+
         print("using correspondences from file " + file_name)
 
         # get the 2d-3d correspondences for the 1st ref image
@@ -198,12 +194,12 @@ def main():
 
         # find the 2d-3d mapping for the remaining image points in the new image by doing triangulation
         X_new = linear_triagulation(M_ref, C_new, R_new, K, remaining_2d_2d)
-        X_new_ref = nonlinear_triang(M_ref, M_new, X_new, remaining_2d_2d, K)
-        X_new_ref = X_new_ref.reshape((remaining_2d_2d.shape[0], 3))
+        X_new = nonlinear_triang(M_ref, M_new, X_new, remaining_2d_2d, K)
+        X_new = X_new.reshape((remaining_2d_2d.shape[0], 3))
 
         remaining_2d_3d = remaining_2d_2d[:, 2:4]
         print("points before adding remaining corresp - {}".format(new_img_2d_3d.shape))
-        new_img_2d_3d = np.vstack((new_img_2d_3d, np.hstack((remaining_2d_3d, X_new_ref))))
+        new_img_2d_3d = np.vstack((new_img_2d_3d, np.hstack((remaining_2d_3d, X_new))))
         print("points after adding remaining corresp - {}".format(new_img_2d_3d.shape))
         print("......................................")
 
@@ -211,29 +207,30 @@ def main():
         corresp_2d_3d[new_img_num] = new_img_2d_3d
         pose_set[new_img_num] = np.hstack((R_new, C_new))
 
-        # use the 2d-3d correspondences to find the pose of the new cam
-        # R_new, C_new = linear_pnp(new_img_2d_3d, K)
-        # C_new = C_new.reshape((3, 1))
-        # poses[new_img_num] = np.hstack((R_new, C_new))
-
-        # plot all the poses
-
-
         # print reprojection error after non-linear pnp
         pts_img_all = new_img_2d_3d[:, 0:2]
         X_all = new_img_2d_3d[:, 2:]
-
         reproj_errors, pts_img_reproj_all = compute_reproj_err_all(pts_img_all, M_new, X_all, ret=True)
-
         mean_proj_error[new_img_num] = np.mean(reproj_errors)
 
         # plotting reprojected points
         plot_funcs.plot_reproj_points(images[new_img_num-1], new_img_num, np.float32(pts_img_all), np.float32(pts_img_reproj_all), save=True)
 
-    print("plotting all the camera poses and their respective correspondences\n")
-    plot_funcs.plot_camera_poses(pose_set, corresp_2d_3d, save=True)
-    print(mean_proj_error)
-    print(pose_set)
+        # do bundle adjustment
+        map_2d_3d[new_img_num] = zip(pts_img_all, range(X_set.shape[0], X_set.shape[0] + X_all.shape[0]))
+        X_set = np.append(X_set, X_all, axis=0)
+
+        print("doing Bundle Adjustment --> ")
+        pose_set_opt, X_set = bundle_adjustment(pose_set, X_set, map_2d_3d, K)
+        print("outputs of BA")
+        print(pose_set_opt)
+        print(X_set.shape)
+
+
+    # print("plotting all the camera poses and their respective correspondences\n")
+    # plot_funcs.plot_camera_poses(pose_set, corresp_2d_3d, save=True)
+    # print(mean_proj_error)
+    # print(pose_set)
 
 
 
