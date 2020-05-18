@@ -3,7 +3,7 @@ import os
 import cv2
 import numpy as np
 from EstimateFundamentalMatrix import estimate_f_matrix
-
+np.random.seed(2)
 
 def get_inliers_ransac(pts_from_txt, thresh=0.005):
 
@@ -16,7 +16,9 @@ def get_inliers_ransac(pts_from_txt, thresh=0.005):
     pts_img1 = np.hstack((pts_img1, ones))
     pts_img2 = np.hstack((pts_img2, ones))
 
-
+    ''' 42 - 858
+    '''
+    random.seed(42)
     ## RANSAC
     max_inliers = 0
 

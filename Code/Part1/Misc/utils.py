@@ -149,6 +149,37 @@ class PlotFuncs:
         plt.show()
 
 
+    def bundle_adjustment_op(self, poses, X_world_all):
+
+
+        colormap = ['y', 'b', 'c', 'm', 'r', 'k']
+
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+
+
+        for c, p in zip(colormap, poses):
+
+            # extract the camera pose
+            pose = poses[p]
+            R = pose[:, 0:3]
+            C = pose[:, 3]
+
+            # plot the cameras
+            euler_angles = self.misc_funcs.rotationMatrixToEulerAngles(R)
+            angles_camera = np.rad2deg(euler_angles)
+
+            t = mpl.markers.MarkerStyle(marker=mpl.markers.CARETDOWN)
+            t._transform = t.get_transform().rotate_deg(int(angles_camera[1]))
+            ax = plt.gca()
+            ax.scatter((C[0]), (C[2]), marker=t, s=250, color=c)
+
+        ax.scatter(X_world_all[:, 0], X_world_all[:, 2], s=4, color='k')
+        plt.xlim(-30, 20)
+        plt.ylim(-30, 40)
+
+        plt.savefig('ba_op.png')
+        plt.show()
 
 
     def plot_reproj_points(self, image, image_num, pts_img_all, pts_img_reproj_all, save=False):

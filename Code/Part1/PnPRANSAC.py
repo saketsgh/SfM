@@ -35,6 +35,9 @@ def pnp_ransac(corresp_2d_3d, K, thresh = 20):
     corresp = corresp_2d_3d
 
     max_inliers = 0
+    # 42
+    # 26
+    random.seed(26)
 
     # perform RANSAC to estimate the best pose
     for i in range(10000):

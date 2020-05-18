@@ -2,9 +2,27 @@ import numpy as np
 from scipy.optimize import least_squares
 from NonlinearPnP import rot2Quat, quat2Rot
 from Misc.utils import MiscFuncs
+from scipy.sparse import lil_matrix
+import time
+
+def bundle_adjustment_sparsity(n_cameras, n_points, camera_indices, point_indices):
+    m = camera_indices.size * 2
+    n = n_cameras * 7 + n_points * 3
+    A = lil_matrix((m, n), dtype=int)
+
+    i = np.arange(camera_indices.size)
+    for s in range(7):
+        A[2 * i, camera_indices * 7 + s] = 1
+        A[2 * i + 1, camera_indices * 7 + s] = 1
+
+    for s in range(3):
+        A[2 * i, n_cameras * 7 + point_indices * 3 + s] = 1
+        A[2 * i + 1, n_cameras * 7 + point_indices * 3 + s] = 1
+
+    return A
 
 
-def compute_reproj_err(img_pts_2d, param_cam, world_pts_3d):
+def compute_reproj_err_all(K, img_pts_2d, param_cam, world_pts_3d):
 
     misc_funcs = MiscFuncs()
     ones = np.ones((world_pts_3d.shape[0], 1))
@@ -16,16 +34,18 @@ def compute_reproj_err(img_pts_2d, param_cam, world_pts_3d):
         R = quat2Rot(param_cam[i, :4])
         C = param_cam[i, 4:]
         M = misc_funcs.get_projection_matrix(K, R, C)
-        p = np.reshape((4, 1))
+        p = p.reshape((4, 1))
         proj_pt = np.dot(M, p)
         proj_pt = proj_pt/proj_pt[2]
-        pt_img_proj = np.append(pt_img_proj,[proj_pt[0], proj_pt[1]],axis=0)
+        proj_pt = proj_pt[:2]
+        proj_pt = proj_pt.reshape((1, 2))
+        pt_img_proj = np.append(pt_img_proj, proj_pt, axis=0)
 
     reproj_err = img_pts_2d - pt_img_proj
-    reproj_err = reproj_err**2
-    reproj_err = np.sum(reproj_err, axis=1)
+    # reproj_err = reproj_err**2
+    # reproj_err = np.sum(reproj_err, axis=1)
 
-    return reproj_err
+    return reproj_err.ravel()
 
 
 def get_bund_adj_params(pose_set, X_world_all, map_2d_3d):
@@ -35,6 +55,8 @@ def get_bund_adj_params(pose_set, X_world_all, map_2d_3d):
     indices_3d_pts = np.empty(0, dtype=int)
     img_pts_2d = np.empty((0, 2), dtype=np.float32)
     indices_cam = np.empty(0, dtype=int)
+
+    n_cam = max(pose_set.keys())
 
     # for each camera pose(1-6)
     for k in pose_set.keys():
@@ -47,13 +69,11 @@ def get_bund_adj_params(pose_set, X_world_all, map_2d_3d):
         x0 = np.append(x0, C, axis=0)
 
         for p in map_2d_3d[k]:
-            print(p[1])
-            indices_3d_pts = np.append(indices_3d_pts, p[1], axis=0)
-            img_pts_2d = np.append(img_pts_2d, p[0], axis=0)
-            indices_cam = np.append(indices_cam, k-1, axis=0)
+            indices_3d_pts = np.append(indices_3d_pts, [p[1]], axis=0)
+            img_pts_2d = np.append(img_pts_2d, [p[0]], axis=0)
+            indices_cam = np.append(indices_cam, [k-1], axis=0)
 
     x0 = np.append(x0, X_world_all.flatten(), axis=0)
-    n_cam = np.shape(indices_cam)[0]
     n_3d = X_world_all.shape[0]
 
     return n_cam, n_3d, indices_3d_pts, img_pts_2d, indices_cam, x0
@@ -63,26 +83,33 @@ def optimize(x0, n_cam, n_3d, indices_3d_pts, img_pts_2d, indices_cam, K):
 
     param_cam = x0[:n_cam*7].reshape((n_cam, 7))
     world_pts_3d = x0[n_cam*7:].reshape((n_3d, 3))
-
     reproj_err = compute_reproj_err_all(K, img_pts_2d, param_cam[indices_cam], world_pts_3d[indices_3d_pts])
-
+    # print("error ka shape - {}".format(reproj_err.shape))
     return reproj_err
 
 
 def bundle_adjustment(pose_set, X_world_all, map_2d_3d, K):
 
+
     n_cam, n_3d, indices_3d_pts, img_pts_2d, indices_cam, x0 = get_bund_adj_params(pose_set, X_world_all, map_2d_3d)
 
-    result = least_squares(fun=optimize, x0=x0, ftol=1e-3, args=(n_cam, n_3d, indices_3d_pts, img_pts_2d, indices_cam, K))
+    print("chaliye shuru karte he BA--> ")
+    A = bundle_adjustment_sparsity(n_cam, n_3d, indices_cam, indices_3d_pts)
+
+    start = time.time()
+    result = least_squares(fun=optimize, x0=x0, jac_sparsity=A, verbose=2, x_scale='jac',
+    ftol=1e-4, method='trf', args=(n_cam, n_3d, indices_3d_pts, img_pts_2d, indices_cam, K))
+    end = time.time()
+    print("optimisation took -- {} seconds".format(start-end))
 
     param_cam = result.x[:n_cam*7].reshape((n_cam, 7))
     X_world_all_opt = result.x[n_cam*7:].reshape((n_3d, 3))
     pose_set_opt = {}
     i = 0
     for cp in param_cam:
-        R = quat2Rot(param_cam[:4])
-        C = param_cam[4:].reshape((3, 1))
-        pose_set_opt[i] = np.hstack((R, C))
+        R = quat2Rot(cp[:4])
+        C = cp[4:].reshape((3, 1))
+        pose_set_opt[i] = np.hstack((R, C))    
         i += 1
 
     return pose_set_opt, X_world_all_opt

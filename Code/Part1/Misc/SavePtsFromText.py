@@ -52,7 +52,7 @@ def save_ransac_pts(path):
 
     cur_path = os.getcwd()
     # thresholds = [0.001, 0.002] perfect for 3 and 4
-    thresholds = [0.0025, 0.0025, 0.001, 0.002]
+    thresholds = [0.0025, 0.0025, 0.0025, 0.0025]
     for nums, thresh in zip(image_nums, thresholds):
         img_pair = str(nums[0])+str(nums[1])
         file_name = "matches"+img_pair+".txt"

@@ -219,19 +219,19 @@ def main():
         # do bundle adjustment
         map_2d_3d[new_img_num] = zip(pts_img_all, range(X_set.shape[0], X_set.shape[0] + X_all.shape[0]))
         X_set = np.append(X_set, X_all, axis=0)
+        print("X_all and X_set shape - {} & {}".format(X_all.shape, X_set.shape))
 
         print("doing Bundle Adjustment --> ")
         pose_set_opt, X_set = bundle_adjustment(pose_set, X_set, map_2d_3d, K)
-        print("outputs of BA")
-        print(pose_set_opt)
-        print(X_set.shape)
+        # print("outputs of BA")
+        # print(pose_set_opt)
+        # print(X_set.shape)
 
-
-    # print("plotting all the camera poses and their respective correspondences\n")
-    # plot_funcs.plot_camera_poses(pose_set, corresp_2d_3d, save=True)
-    # print(mean_proj_error)
-    # print(pose_set)
-
+        # print("plotting all the camera poses and their respective correspondences\n")
+        plot_funcs.plot_camera_poses(pose_set, corresp_2d_3d, save=True)
+        # print(mean_proj_error)
+        # print(pose_set)
+        plot_funcs.bundle_adjustment_op(pose_set_opt, X_set)
 
 
 if __name__ == '__main__':
