@@ -3,23 +3,8 @@ from scipy.optimize import least_squares
 from NonlinearPnP import rot2Quat, quat2Rot
 from Misc.utils import MiscFuncs
 from scipy.sparse import lil_matrix
+from BuildVisibilityMatrix import bundle_adjustment_sparsity
 import time
-
-def bundle_adjustment_sparsity(n_cameras, n_points, camera_indices, point_indices):
-    m = camera_indices.size * 2
-    n = n_cameras * 7 + n_points * 3
-    A = lil_matrix((m, n), dtype=int)
-
-    i = np.arange(camera_indices.size)
-    for s in range(7):
-        A[2 * i, camera_indices * 7 + s] = 1
-        A[2 * i + 1, camera_indices * 7 + s] = 1
-
-    for s in range(3):
-        A[2 * i, n_cameras * 7 + point_indices * 3 + s] = 1
-        A[2 * i + 1, n_cameras * 7 + point_indices * 3 + s] = 1
-
-    return A
 
 
 def compute_reproj_err_all(K, img_pts_2d, param_cam, world_pts_3d):
@@ -58,7 +43,7 @@ def get_bund_adj_params(pose_set, X_world_all, map_2d_3d):
 
     n_cam = max(pose_set.keys())
 
-    # for each camera pose(1-6)
+    # for each camera pose
     for k in pose_set.keys():
 
         # convert to quaternion
@@ -93,7 +78,6 @@ def bundle_adjustment(pose_set, X_world_all, map_2d_3d, K):
 
     n_cam, n_3d, indices_3d_pts, img_pts_2d, indices_cam, x0 = get_bund_adj_params(pose_set, X_world_all, map_2d_3d)
 
-    print("chaliye shuru karte he BA--> ")
     A = bundle_adjustment_sparsity(n_cam, n_3d, indices_cam, indices_3d_pts)
 
     start = time.time()
@@ -105,11 +89,11 @@ def bundle_adjustment(pose_set, X_world_all, map_2d_3d, K):
     param_cam = result.x[:n_cam*7].reshape((n_cam, 7))
     X_world_all_opt = result.x[n_cam*7:].reshape((n_3d, 3))
     pose_set_opt = {}
-    i = 0
+    i = 1
     for cp in param_cam:
         R = quat2Rot(cp[:4])
         C = cp[4:].reshape((3, 1))
-        pose_set_opt[i] = np.hstack((R, C))    
+        pose_set_opt[i] = np.hstack((R, C))
         i += 1
 
     return pose_set_opt, X_world_all_opt

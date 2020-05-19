@@ -55,8 +55,17 @@ def disambiguate_camera_pose(M1, C2_list, R2_list, K, inliers):
             index = i
 
         i+=1
+    # plot the after cheirality condition output
     plt.xlim(-15, 20)
     plt.ylim(-30, 40)
     plt.show()
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    plot_funcs.plot_triangulated_points(X_list_best, index, C_best, R_best)
+    plt.xlim(-15, 20)
+    plt.ylim(-30, 40)
+    plt.show()
+
     print("\n")
     return R_best, C_best, X_list_best, index

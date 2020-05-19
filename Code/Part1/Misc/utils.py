@@ -36,10 +36,13 @@ class PlotFuncs:
         # define color scheme using index to identify which pose from the previous plot was correct
         colormap = np.array(['y', 'b', 'c', 'r'])
 
-        ax.scatter(x_l, z_l, s=40, marker='+', color = colormap[index])
-        ax.scatter(x_nl, z_nl, s=7, color = 'k')
+        ax.scatter(x_l, z_l, s=100, marker='+', color = colormap[index], label='linear')
+        ax.scatter(x_nl, z_nl, s=7, color = 'k', label='non-linear')
         plt.xlim(-15, 20)
         plt.ylim(-30, 40)
+        ax.set_xlabel('X')
+        ax.set_ylabel('Z')
+        ax.legend()
         plt.show()
 
 
@@ -80,7 +83,7 @@ class PlotFuncs:
         cv2.imshow(matchesImg, clubimage)
         cv2.waitKey(0)
         if(save):
-            cv2.imwrite(matchesImg+".jpg", clubimage)
+            cv2.imwrite(matchesImg+".png", clubimage)
         cv2.destroyAllWindows()
 
 
@@ -112,6 +115,9 @@ class PlotFuncs:
 
         ax.scatter((C[0]), (C[2]), marker=t, s=250, color=colormap[i])
         ax.scatter(x, z, s=4, color=colormap[i])
+        ax.set_xlabel('X')
+        ax.set_ylabel('Z')
+        # plt.savefig('LinTri.png')
 
 
     def plot_camera_poses(self, poses, corresp_2d_3d, save=False):
@@ -141,9 +147,12 @@ class PlotFuncs:
             t._transform = t.get_transform().rotate_deg(int(angles_camera[1]))
             ax = plt.gca()
             ax.scatter((C[0]), (C[2]), marker=t, s=250, color=c)
-            ax.scatter(X[:, 0], X[:, 2], s=4, color=c)
-        plt.xlim(-30, 20)
-        plt.ylim(-30, 40)
+            ax.scatter(X[:, 0], X[:, 2], s=4, color=c, label='cam'+str(p))
+        plt.xlim(-15, 15)
+        plt.ylim(-15, 30)
+        ax.set_xlabel('X')
+        ax.set_ylabel('Z')
+        ax.legend()
         if(save):
             plt.savefig('op.png')
         plt.show()
@@ -172,12 +181,14 @@ class PlotFuncs:
             t = mpl.markers.MarkerStyle(marker=mpl.markers.CARETDOWN)
             t._transform = t.get_transform().rotate_deg(int(angles_camera[1]))
             ax = plt.gca()
-            ax.scatter((C[0]), (C[2]), marker=t, s=250, color=c)
+            ax.scatter((C[0]), (C[2]), marker=t, s=250, color=c, label='camera'+str(p))
 
         ax.scatter(X_world_all[:, 0], X_world_all[:, 2], s=4, color='k')
-        plt.xlim(-30, 20)
-        plt.ylim(-30, 40)
-
+        plt.xlim(-15, 15)
+        plt.ylim(-15, 30)
+        ax.set_xlabel('X')
+        ax.set_ylabel('Z')
+        ax.legend()
         plt.savefig('ba_op.png')
         plt.show()
 

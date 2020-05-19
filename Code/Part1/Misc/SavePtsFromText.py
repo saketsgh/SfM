@@ -7,7 +7,7 @@ import numpy as np
 
 from GetInliersRANSAC import get_inliers_ransac
 
-from utils import MiscFuncs
+from utils import MiscFuncs, PlotFuncs
 
 def extract_points(path):
 
@@ -49,10 +49,13 @@ def save_ransac_pts(path):
     image_nums = [[2, 3], [3, 4], [4, 5], [5, 6]]
     corresp_2d_2d = {}
     misc_funcs = MiscFuncs()
+    plot_funcs = PlotFuncs()
 
     cur_path = os.getcwd()
     # thresholds = [0.001, 0.002] perfect for 3 and 4
     thresholds = [0.0025, 0.0025, 0.0025, 0.0025]
+
+    images = misc_funcs.load_images(path)
     for nums, thresh in zip(image_nums, thresholds):
         img_pair = str(nums[0])+str(nums[1])
         file_name = "matches"+img_pair+".txt"
@@ -61,8 +64,8 @@ def save_ransac_pts(path):
         pts_from_txt = misc_funcs.get_pts_from_txt(path, file_name)
         os.chdir("../../Data/Data")
         pts_from_txt = np.array(pts_from_txt, np.float32)
-        inlier_locs, _, _, _, _ = get_inliers_ransac(pts_from_txt, thresh)
-
+        inlier_locs, outliers_locs, F, pts_left, pts_right = get_inliers_ransac(pts_from_txt, thresh)
+        plot_funcs.plot_img_correspondences(images[nums[0]-1], images[nums[1]-1], inlier_locs, outliers_locs, file_name, save=True)
 
         save_file_name = "ransac"+img_pair
         for pts in inlier_locs:
